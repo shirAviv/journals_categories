@@ -4,6 +4,7 @@ from datetime import date,datetime,timedelta
 import numpy as np
 from visualization import Visualization
 from itertools import chain,combinations
+from process_scopus_journals_list import ProcessScopusJournals
 
 
 
@@ -19,12 +20,12 @@ class ProcessWOSJournals:
         print(categories)
         categories_dict = categories.set_index('Categories').T.to_dict('list')
         full_df = self.get_full_wos_df(journals_file_AHCI, journals_file_SCIE,
-                                                        journals_file_SSCI)
+                                                        journals_file_SSCI, utils)
         full_df[['WOS Categories','num WOS Cats']]=full_df.apply(lambda row: pd.Series(self.remove_repeating_categories(row['WOS Categories'])), axis=1)
         # full_df['num WOS Cats']=full_df.apply(lambda row: pd.Series(self))
         for category in categories_dict:
             categories_dict[category]=dict()
-            cond=full_df['WOS Categories'].str.contains(category)
+            cond=full_df['WOS Categories'].str.find('|'+category+'|')!=-1
             journals=full_df.loc[cond,:]
             if not journals['Journal title'].is_unique:
                 print('not unique journal in cat {}'.format(category))
@@ -58,20 +59,33 @@ class ProcessWOSJournals:
                     print('error')
             idxs_index += 1
         full_df.drop_duplicates(['Journal title'], inplace=True, ignore_index=True)
+        full_df['Journal title']=full_df['Journal title'].str.lower()
+        full_df['ISSN']=full_df['ISSN'].str.lower()
+        full_df['eISSN']=full_df['eISSN'].str.lower()
+        full_df[['ISSN','eISSN']]=full_df.apply(lambda row: pd.Series(self.remove_leading_zeros(row['ISSN'], row['eISSN'])), axis=1)
+        full_df[['ISSN','eISSN']]=full_df.apply(lambda row: pd.Series(self.remove_dash(row['ISSN'], row['eISSN'])), axis=1)
+
         return full_df
 
     def remove_repeating_categories(self, cats):
-        cats_set = set(cats.split('|'))
-        cats_str= ' | '.join(cats_set)
+        cats_list = cats.split('|')
+        cats_set=set()
+        for e in cats_list:
+            e=e.strip()
+            cats_set.add(e)
+        cats_str= '|'+'|'.join(cats_set)+'|'
         num_cats=len(cats_set)
         return cats_str, num_cats
 
-    def get_scopus_categories_and_journals(self, cat_file, journals_file, utils=None):
-        categories = utils.load_csv_data_to_df(cat_file)
-        print(categories)
-        # categories_dict=categories.to_dict()
-        df=utils.load_csv_data_to_df(journals_file)
-        return categories, df
+    def remove_leading_zeros(self, issn, eIssn):
+        journal_ISSN = issn.lstrip('0')
+        journal_eISSN = eIssn.lstrip('0')
+        return journal_ISSN, journal_eISSN
+
+    def remove_dash(self, issn, eIssn):
+        journal_ISSN = issn.replace('-', '')
+        journal_eISSN = eIssn.replace('-', '')
+        return journal_ISSN, journal_eISSN
 
     def match_categories_from_wos(self,wos_categories_dict, scopus_categories, scopus_journals):
         for category in wos_categories_dict:
@@ -90,17 +104,17 @@ class ProcessWOSJournals:
                     match = scopus_journals.loc[cond, :]
                     if len(match) != 1:
                         # print('not a single match, trying with eISSN')
-                        if journal_ISSN.startswith('0'):
-                            journal_ISSN=journal_ISSN.lstrip('0')
-                        else:
-                            journal_ISSN = '0'+journal_ISSN
-                        cond = scopus_journals['ISSN'].str.lower() == journal_ISSN
-                        match = scopus_journals.loc[cond, :]
+                        # if journal_ISSN.startswith('0'):
+                        #     journal_ISSN=journal_ISSN.lstrip('0')
+                        # else:
+                        #     journal_ISSN = '0'+journal_ISSN
+                        # cond = scopus_journals['ISSN'].str.lower() == journal_ISSN
+                        # match = scopus_journals.loc[cond, :]
                         if len(match) != 1:
                             cond = scopus_journals['eISSN'].str.lower() == journal_eISSN
                             match = scopus_journals.loc[cond, :]
                             if len(match) != 1:
-                                cond = scopus_journals['Source Title'].str.lower() == journal_name
+                                cond = scopus_journals['Journal title'].str.lower() == journal_name
                                 match = scopus_journals.loc[cond, :]
                                 if len(match) == 0:
                                     # print('not a single match for \'{}\', giving up'.format(journal_name))
@@ -148,34 +162,55 @@ class ProcessWOSJournals:
                     journal_name=row['Journal title'].lower()
                     journal_ISSN = row['ISSN'].replace('-','')
                     journal_eISSN = row['eISSN'].replace('-','')
-                    # print(journal_name)
+                    if (journal_ISSN=='8846812' or journal_ISSN=='39438'):
+                        print(journal_name)
+                    if ( journal_eISSN=='15463222' or journal_eISSN=='19201214' or journal_eISSN=='18722040'):
+                        print(journal_name)
                     cond = scopus_journals['ISSN'].str.lower() == journal_ISSN
                     match = scopus_journals.loc[cond, :]
                     if len(match) != 1:
+                        if len(match)>1:
+                            cond=match['Active or Inactive']=='Active'
+                            match=match.loc[cond,:]
+                        if len(match)!=1:
                         # print('not a single match, trying with eISSN')
-                        if journal_ISSN.startswith('0'):
-                            journal_ISSN=journal_ISSN.lstrip('0')
-                        else:
-                            journal_ISSN = '0'+journal_ISSN
-                        cond = scopus_journals['ISSN'].str.lower() == journal_ISSN
-                        match = scopus_journals.loc[cond, :]
-                        if len(match) != 1:
+                        # if journal_ISSN.startswith('0'):
+                        #     journal_ISSN=journal_ISSN.lstrip('0')
+                        # else:
+                        #     journal_ISSN = '0'+journal_ISSN
+                        # cond = scopus_journals['ISSN'].str.lower() == journal_ISSN
+                        # match = scopus_journals.loc[cond, :]
+                        # if len(match) != 1:
                             cond = scopus_journals['eISSN'].str.lower() == journal_eISSN
                             match = scopus_journals.loc[cond, :]
                             if len(match) != 1:
-                                cond = scopus_journals['Source Title'].str.lower() == journal_name
+                                if len(match) > 1:
+                                    cond = match['Active or Inactive'] == 'Active'
+                                    match = match.loc[cond, :]
+                            if len(match) != 1:
+                                cond = scopus_journals['Journal title'].str.lower() == journal_name
                                 match = scopus_journals.loc[cond, :]
                                 if len(match) == 0:
                                     # print('not a single match for \'{}\', giving up'.format(journal_name))
                                     indexes_to_drop.append(wos_index)
                                     continue
                                 if len(match) > 1:
-                                    print('multiple matches for \'{}\', giving up'.format(journal_name))
-                                    indexes_to_drop.append(wos_index)
-                                    continue
+                                    cond = match['Active or Inactive'] == 'Active'
+                                    match = match.loc[cond, :]
+                                    if len(match)!=1:
+                                        print('multiple matches for \'{}\', giving up'.format(journal_name))
+                                        indexes_to_drop.append(wos_index)
+                                        continue
 
+                    scopus_journal_active = match['Active or Inactive'].values[0]
+                    if scopus_journal_active == 'Inactive':
+                        continue
                     count_journals += 1
                     scopus_subject_codes=list(match['ASJC'].str.split(';'))
+                    scopus_journal_name=match['Journal title']
+                    if len(scopus_journal_name)==0:
+                        print('error missing name in scopus for {}, ISSN {}, eISSN {}'.format(journal_name,journal_ISSN,journal_eISSN))
+                        scopus_journal_name=journal_name
                     # print(scopus_subject_codes)
                     for subject_code in scopus_subject_codes[0]:
                         if len(subject_code)==0:
@@ -188,7 +223,7 @@ class ProcessWOSJournals:
                         scopus_matched_categories=scopus_categories_dict
                         if not subject_name in scopus_categories_dict:
                             scopus_categories_dict[subject_name] = []
-                        scopus_categories_dict[subject_name].append(journal_name)
+                        scopus_categories_dict[subject_name].append(scopus_journal_name)
                 if len(indexes_to_drop)>0 :
                     category_df.drop(index=indexes_to_drop, inplace=True)
                 # sorted_scopus_categories_dict=sorted(scopus_categories_dict.items(), key=lambda x: x[1], reverse=True)
@@ -221,7 +256,7 @@ class ProcessWOSJournals:
         maxValuesObj = wos_scopus_mapping_df.max()
         maxValueIndexObj = wos_scopus_mapping_df.idxmax()
         a=maxValueIndexObj.duplicated()
-        df_thresholds=pd.DataFrame(columns=['Threshold','Number of Categories'])
+        df_thresholds=pd.DataFrame(columns=['Threshold','Percent of Categories'])
         for step in range(0,100,5):
             threshold=step/100
             count_above_threshold=(maxValuesObj / totals_df) >= threshold
@@ -229,8 +264,9 @@ class ProcessWOSJournals:
             count_below_threshold=(maxValuesObj / totals_df) < threshold
             categories_without_match=maxValueIndexObj.loc[count_below_threshold]
             num_categories_with_match = len(categories_with_match)
-            print('for threshold {}, matched {} categories'.format(threshold, num_categories_with_match))
-            row={'Threshold':threshold,'Number of Categories':num_categories_with_match}
+            percent_categories_with_match=num_categories_with_match*100/len(totals_df)
+            print('for threshold {}, matched {} categories'.format(threshold, percent_categories_with_match))
+            row={'Threshold':threshold,'Percent of Categories':percent_categories_with_match}
             df_thresholds=df_thresholds.append(row, ignore_index=True)
         df_thresholds.set_index('Threshold', inplace=True)
         return df_thresholds
@@ -446,11 +482,14 @@ if __name__ == '__main__':
     utils=Utils(path=path)
     pwj=ProcessWOSJournals()
     vis=Visualization()
-    # wos_categories_dict, wos_df=pwj.get_wos_categories_and_journals('wos_categories.csv', 'wos-core_SCIE.csv', 'wos-core_SSCI.csv', 'wos-core_AHCI.csv')
-    # scopus_categories, scopus_df=pwj.get_scopus_categories_and_journals('scopus_categories_full.csv', 'scopus_full_2020.csv')
-    # wos_to_scopus_categories_df=pwj.match_categories_from_wos_2(wos_categories_dict,scopus_categories,scopus_df)
-    # utils.write_to_csv(wos_to_scopus_categories_df,'wos_to_scopus_categories_for_group_mapping.csv')
-    # utils.save_obj(wos_to_scopus_categories_df,'wos_to_scopus_categories_for_group_mapping')
+    psj=ProcessScopusJournals()
+    wos_categories_dict, wos_df=pwj.get_wos_categories_and_journals('wos_categories.csv', 'wos-core_SCIE.csv', 'wos-core_SSCI.csv', 'wos-core_AHCI.csv', utils)
+    scopus_categories, scopus_df=psj.get_scopus_categories_and_journals('scopus_categories_full.csv', 'scopus_full_2020.csv',utils)
+
+    wos_to_scopus_categories_df=pwj.match_categories_from_wos_2(wos_categories_dict,scopus_categories,scopus_df)
+    utils.write_to_csv(wos_to_scopus_categories_df,'wos_to_scopus_categories_for_group_mapping.csv')
+    utils.save_obj(wos_to_scopus_categories_df,'wos_to_scopus_categories_for_group_mapping')
+    exit(0)
     # mapping=pwj.categories_mapping(df)
     # utils.save_obj(mapping,'wos_to_scopus_categories_mapping')
     df1=utils.load_obj('wos_to_scopus_categories_mapping')

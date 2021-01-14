@@ -25,34 +25,59 @@ class Visualization():
         ax.legend(['Scopus category for WOS category','WOS category for Scopus category'])
         plt.show()
 
-    def plt_coverset_size(self,df1,df2,title1, title2):
+    def plt_coverset_size(self,df1,df2,title1, title2, extract_low=None, extract_high=None):
         fig, (ax1, ax2)=plt.subplots(1, 2)
 
-        sorted_df1_by_num_journals = df1.sort_values(by='Num journals')
-        sorted_df2_by_num_journals = df2.sort_values(by='Num journals')
+        sorted_df1 = df1.sort_values(by='Num journals')
+        sorted_df2 = df2.sort_values(by='Num journals')
+
+        if isinstance(extract_low, int):
+            sorted_df1=sorted_df1[sorted_df1['Num journals'] <= extract_low]
+            sorted_df2=sorted_df2[sorted_df2['Num journals'] <= extract_low]
+
+        if isinstance(extract_high, int):
+            sorted_df1 = df1.sort_values(by='Min Cover set ILP')
+            sorted_df2 = df2.sort_values(by='Min Cover set ILP')
+            sorted_df1=sorted_df1[sorted_df1['Min Cover set ILP'] >= extract_high]
+            sorted_df2=sorted_df2[sorted_df2['Min Cover set ILP'] >= extract_high]
 
 
-        # ys1 = sorted_df1_by_num_journals['Min cover set Greedy'].values
-        ys1 = sorted_df1_by_num_journals[0:-1]['Min Cover set ILP'].values
-        ys2 = sorted_df2_by_num_journals[0:-1]['Min Cover set ILP'].values
-        xs1=sorted_df1_by_num_journals[0:-1]['Num journals'].values
-        xs2 = sorted_df2_by_num_journals[0:-1]['Num journals'].values
+
+        # ys1 = sorted_df1['Min cover set Greedy'].values
+        ys1 = sorted_df1['Min Cover set ILP'].values
+        ys2 = sorted_df2['Min Cover set ILP'].values
+        xs1=sorted_df1['Num journals'].values
+        xs2 = sorted_df2['Num journals'].values
 
         ax1.scatter(xs1, ys1,color='blue', label='Scopus categories min \n cover set of WOS categories')
         ax1.scatter(xs2,ys2, color='green', label='WOS categories min \n cover set of Scopus categories')
         ax1.set_ylabel('Min cover set size')
         ax1.set_xlabel('Number of journals')
 
+
+
         ax1.set_title(title1)
 
-        sorted_df1_by_num_cats = df1.sort_values(by='Num matching cats')
-        sorted_df2_by_num_cats = df2.sort_values(by='Num matching cats')
+        sorted_df1 = df1.sort_values(by='Num matching cats')
+        sorted_df2 = df2.sort_values(by='Num matching cats')
+
+        if isinstance(extract_low, int):
+            sorted_df1=sorted_df1[sorted_df1['Num matching cats'] <= extract_low-10]
+            sorted_df2=sorted_df2[sorted_df2['Num matching cats'] <= extract_low-10]
+
+        if isinstance(extract_high, int):
+            sorted_df1 = df1.sort_values(by='Min Cover set ILP')
+            sorted_df2 = df2.sort_values(by='Min Cover set ILP')
+            sorted_df1 = sorted_df1[sorted_df1['Min Cover set ILP'] >= extract_high]
+            sorted_df2 = sorted_df2[sorted_df2['Min Cover set ILP'] >= extract_high]
 
 
-        ys1 = sorted_df1_by_num_cats[0:-1]['Min Cover set ILP'].values
-        ys2 = sorted_df2_by_num_cats[0:-1]['Min Cover set ILP'].values
-        xs1 = sorted_df1_by_num_cats[0:-1]['Num matching cats'].values
-        xs2 = sorted_df2_by_num_cats[0:-1]['Num matching cats'].values
+
+
+        ys1 = sorted_df1['Min Cover set ILP'].values
+        ys2 = sorted_df2['Min Cover set ILP'].values
+        xs1 = sorted_df1['Num matching cats'].values
+        xs2 = sorted_df2['Num matching cats'].values
 
         ax2.scatter(xs1, ys1, color='blue', label='Scopus categories min \n cover set of WOS categories')
         ax2.scatter(xs2, ys2, color='green', label='WOS categories min \n cover set of Scopus categories')

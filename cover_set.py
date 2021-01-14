@@ -107,13 +107,13 @@ class CoverSet:
         # variable_names.sort()
         # print("Variable Indices:", variable_names)
 
-    def build_array(self, df_cat=None, journals=None, sco_cats_dict=None, from_scopus=False):
+    def build_array(self, df_cat=0.0, journals=None, cats_dict=None, from_scopus=False):
         if not isinstance(df_cat,float):
             if not from_scopus:
-                sco_cats_dict = df_cat['scopus_categories']
+                cats_dict = df_cat['scopus_categories']
             else:
-                sco_cats_dict = df_cat['wos_categories']
-            if isinstance(sco_cats_dict, float):
+                cats_dict = df_cat['wos_categories']
+            if isinstance(cats_dict, float):
                 return
             if from_scopus:
                 journals = pd.DataFrame(columns=['Journal title'])
@@ -122,11 +122,11 @@ class CoverSet:
                 journals = df_cat['journals'].copy()
         journals.reset_index(drop=True, inplace=True)
         num_journals=len(journals)
-        num_cats=len(sco_cats_dict)
+        num_cats=len(cats_dict)
         arr=np.zeros([num_journals, num_cats])
-        cats_names=list(sco_cats_dict.keys())
+        cats_names=list(cats_dict.keys())
         for j, cat_name in enumerate(cats_names):
-            val=sco_cats_dict[cat_name]
+            val=cats_dict[cat_name]
             for journal_name in val:
                 i=journals[journals['Journal title'] == journal_name].index[0]
                 arr[i,j]=1
@@ -216,7 +216,7 @@ class CoverSet:
             df_results=df_results.append(record, ignore_index=True)
         return df_results
 
-    def run_cover_set_no_cat_wos(self):
+    def run_cover_set_no_cat_wos(self, utils=None):
         sco_cats_dict = utils.load_obj('no_cat_wos_to_scopus_categories_for_group_mapping')
         journals_set=set()
         for k,v in sco_cats_dict.items():
@@ -230,7 +230,7 @@ class CoverSet:
         end_time = datetime.now()
         print(end_time - start_time)
         greedy_cover_set_size = len(cover_set_greedy)
-        const_arr = cs.build_array(journals=journals_df,sco_cats_dict= sco_cats_dict)
+        const_arr = cs.build_array(journals=journals_df, cats_dict= sco_cats_dict)
         ilp_model = cs.build_model(const_arr)
         status, objective = cs.run_model(ilp_model)
         print('All journals, all categories, status {}, objective {}'.format(status, objective))
@@ -264,25 +264,28 @@ class CoverSet:
             df_results=df_results.append(record, ignore_index=True)
         return df_results
 
-    def run_cover_set_no_cat_scopus(self):
-        sco_cats_dict = utils.load_obj('no_cat_scopus_to_wos_categories_for_group_mapping')
+    def run_cover_set_no_cat_scopus(self, utils=None):
+        cats_dict = utils.load_obj('no_cat_scopus_to_wos_categories_for_group_mapping')
         journals_set=set()
-        for k,v in sco_cats_dict.items():
+        for k,v in cats_dict.items():
             journals_set.update(v)
+        count=0
+        for k,v in cats_dict.items():
+            count+=len(v)
         df_results = pd.DataFrame(
             columns=['Category', 'Num journals', 'Num matching cats', 'Min cover set Greedy', 'Min Cover set ILP'])
         journals_df=pd.DataFrame(columns=['Journal title'])
         journals_df['Journal title']=list(journals_set)
         start_time = datetime.now()
-        cover_set_greedy = cs.cover_set_greedy(journals=journals_df, cats_dict=sco_cats_dict)
+        cover_set_greedy = cs.cover_set_greedy(journals=journals_df, cats_dict=cats_dict)
         end_time = datetime.now()
         print(end_time - start_time)
         greedy_cover_set_size = len(cover_set_greedy)
-        const_arr = cs.build_array(journals=journals_df,sco_cats_dict= sco_cats_dict)
+        const_arr = cs.build_array(journals=journals_df, cats_dict= cats_dict)
         ilp_model = cs.build_model(const_arr)
         status, objective = cs.run_model(ilp_model)
         print('All journals, all categories, status {}, objective {}'.format(status, objective))
-        record = {'Category': 'All', 'Num journals': len(journals_set), 'Num matching cats': len(sco_cats_dict),
+        record = {'Category': 'All', 'Num journals': len(journals_set), 'Num matching cats': len(cats_dict),
                   'Min cover set Greedy': greedy_cover_set_size, 'Min Cover set ILP': int(objective)}
         return record
 
@@ -301,6 +304,8 @@ if __name__ == '__main__':
     # print(df)
     # utils.save_obj(df,'cover_set_wos_to_scopus_full')
     df_cover_set_wos_to_scopus_full=utils.load_obj('cover_set_wos_to_scopus_full')
+    all_wos=df_cover_set_wos_to_scopus_full.iloc[-1]
+
     # sorted_df_by_num_journals = df.sort_values(by='Num journals')
     # vis.plt_coverset_size(df_cover_set_wos_to_scopus_full[0:-1],'Cover set size by Number of journals', 'Cover set size by Number of corresponding categories')
     # sorted_df_by_num_cats = df.sort_values(by='Num matching cats')
@@ -308,8 +313,17 @@ if __name__ == '__main__':
 
     # df=cs.run_cover_set_per_category_scopus()
     # utils.save_obj(df,'cover_set_scopus_to_wos')
-    df_cover_set_scopus_to_wos=utils.load_obj('cover_set_scopus_to_wos')
-    vis.plt_coverset_size(df_cover_set_wos_to_scopus_full[0:-1], df_cover_set_scopus_to_wos,'Cover set size by Number of journals', 'Cover set size by Number of corresponding categories')
+    # df_cover_set_scopus_to_wos=utils.load_obj('cover_set_scopus_to_wos')
+    # record=cs.run_cover_set_no_cat_scopus()
+    # df_cover_set_scopus_to_wos = df_cover_set_scopus_to_wos.append(record, ignore_index=True)
+    # utils.save_obj(df_cover_set_scopus_to_wos,'cover_set_scopus_to_wos_full')
+
+    df_cover_set_scopus_to_wos_full = utils.load_obj('cover_set_scopus_to_wos_full')
+    all_scopus=df_cover_set_scopus_to_wos_full.iloc[-1]
+    print('All {} journals covered by {}. Number of categories {}. number of journals {}. Min cover set {}'.format('WOS','Scopus',all_wos['Num matching cats'],all_wos['Num journals'],all_wos['Min Cover set ILP']))
+    print('All {} journals covered by {}. Number of categories {}. number of journals {}. Min cover set {}'.format('Scopus','WOS',all_scopus['Num matching cats'],all_scopus['Num journals'],all_scopus['Min Cover set ILP']))
+
+    vis.plt_coverset_size(df_cover_set_wos_to_scopus_full[0:-1], df_cover_set_scopus_to_wos_full[0:-1],'Cover set size by Number of journals', 'Cover set size by Number of corresponding categories', extract_low=20)
 
 
     # record=cs.run_cover_set_no_cat_scopus()
