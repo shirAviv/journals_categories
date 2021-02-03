@@ -5,6 +5,7 @@ from process_scopus_journals_list import ProcessScopusJournals
 import pandas as pd
 import csv
 import os
+import pickle
 
 
 path='D:\\shir\\study\\bibliometrics\\journals'
@@ -13,12 +14,18 @@ utils=Utils(path=path)
 pwj=ProcessWOSJournals()
 psj=ProcessScopusJournals()
 cs=CoverSet()
+
 # wos_categories_dict, wos_df=pwj.get_wos_categories_and_journals('wos_categories.csv', 'wos-core_SCIE.csv', 'wos-core_SSCI.csv', 'wos-core_AHCI.csv', utils)
 #scopus_categories, scopus_df=pwj.get_scopus_categories_and_journals('scopus_categories_full.csv', 'scopus_full_2020.csv', utils)
 # scopus_categories_and_journals_dict=psj.create_scopus_categories_dict(scopus_categories,scopus_df,wos_df)
 # utils.save_obj(scopus_categories_and_journals_dict,"scopus_categories_and_journals_dict")
+
 scopus_categories_and_journals_dict=utils.load_obj("scopus_categories_and_journals_dict")
 df1 = utils.load_obj('wos_to_scopus_categories_for_group_mapping')
+df2 = utils.load_obj('scopus_to_wos_categories_for_group_mapping')
+
+
+
 # all_wos_journals_to_scopus_categories_dict = pwj.get_scopus_categories_for_all_journals(df1)
 jl1=df1['scopus_categories']
 js1=set()

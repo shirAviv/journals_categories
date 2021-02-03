@@ -16,14 +16,15 @@ class CoverSet:
 
     def cover_set_greedy(self,journals, cats_dict ):
         sorted_cats = sorted(cats_dict, key=lambda k: len(cats_dict[k]))
-        universe=journals
-        universe['Journal title']=universe.apply(lambda row: pd.Series(row['Journal title'].lower()), axis=1)
+        universe=set(journals)
+        # universe['Journal title']=universe.apply(lambda row: pd.Series(row['Journal title'].lower()), axis=1)
         cover=set()
         while not len(universe)==0:
             current_cat_name = sorted_cats.pop()
             current_journals = cats_dict[current_cat_name]
+            current_journals=set(list(map(lambda x: x.values[0], current_journals)))
             # current_cat=cats_dict.pop()
-            current_universe = universe[~universe['Journal title'].isin(current_journals)]
+            current_universe = universe-current_journals
             if len(current_universe)<len(universe):
                 cover.add(current_cat_name)
                 universe=current_universe
@@ -203,7 +204,7 @@ class CoverSet:
             if isinstance(sco_cats_dict, float):
                 print('skipping cat {}'.format(wos_category))
                 continue
-            journals = row['journals']
+            journals = list(row['journals']['Journal title'])
             cover_set_greedy = cs.cover_set_greedy(journals=journals, cats_dict=sco_cats_dict)
             greedy_cover_set_size = len(cover_set_greedy)
             # if wos_category=='Ergonomics':
@@ -295,14 +296,15 @@ if __name__ == '__main__':
     utils=Utils(path=path)
     vis=Visualization()
 
-    # df=cs.run_cover_set_per_category_wos()
-    # utils.save_obj(df,'cover_set_wos_to_scopus')
-    # df=utils.load_obj('cover_set_wos_to_scopus')
-
-    # record=cs.run_cover_set_no_cat_wos()
-    # df=df.append(record, ignore_index=True)
-    # print(df)
-    # utils.save_obj(df,'cover_set_wos_to_scopus_full')
+    df=cs.run_cover_set_per_category_wos()
+    utils.save_obj(df,'cover_set_wos_to_scopus')
+    exit(0)
+    df=utils.load_obj('cover_set_wos_to_scopus')
+    #
+    record=cs.run_cover_set_no_cat_wos()
+    df=df.append(record, ignore_index=True)
+    print(df)
+    utils.save_obj(df,'cover_set_wos_to_scopus_full')
     df_cover_set_wos_to_scopus_full=utils.load_obj('cover_set_wos_to_scopus_full')
     all_wos=df_cover_set_wos_to_scopus_full.iloc[-1]
 

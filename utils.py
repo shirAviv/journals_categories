@@ -22,9 +22,9 @@ class Utils():
         # self.client = ElsClient(config['apikey'])
         # self.client.inst_token = config['insttoken']
 
-    def load_csv_data_to_df(self,name):
+    def load_csv_data_to_df(self,name, delimiter=None):
         obj_path = os.path.join(self.path, name)
-        papers = pd.read_csv(obj_path,keep_default_na=False)
+        papers = pd.read_csv(obj_path,keep_default_na=False, delimiter=delimiter)
         return papers
 
     def save_obj(self,obj, name):

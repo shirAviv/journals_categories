@@ -37,11 +37,14 @@ class ProcessScopusJournals:
         scopus_categories_dict = dict()
         indexes_to_drop = []
         count_journals=0
+        scopus_journals_dict=dict()
+
         # wos_df[['ISSN','eISSN']]=wos_df.apply(lambda row: pd.Series(self.remove_dash(row['ISSN'], row['eISSN'])), axis=1)
         for scopus_index, row in scopus_journals.iterrows():
             journal_name = row['Journal title'].lower()
             journal_ISSN = row['ISSN']
             journal_eISSN = row['eISSN']
+            sourcerecord_id=row['Sourcerecord ID']
             journal_active=row['Active or Inactive']
             if journal_active=='Inactive':
                 continue
@@ -77,6 +80,7 @@ class ProcessScopusJournals:
                 continue
             count_journals += 1
             scopus_subject_codes=list(row['ASJC'].split(';'))
+            citeScore=row['2019 CiteScore']
             # print(scopus_subject_codes)
             for subject_code in scopus_subject_codes:
                 if len(subject_code)==0:
@@ -97,8 +101,17 @@ class ProcessScopusJournals:
                 #print('WOS category {}, number of journals checked {} out of {}'.format(category,count_journals, len(category_df)))
                 #print('scopus matching categories {}'.format(sorted_scopus_categories_dict))
                 # wos_categories_dict[category]['scopus_categories']=scopus_categories_dict
+                if not journal_name in scopus_journals_dict:
+                    scopus_journals_dict[journal_name] = dict()
+                    scopus_journals_dict[journal_name]['categories'] = set()
+                    scopus_journals_dict[journal_name]['CiteScore'] = citeScore
+                    scopus_journals_dict[journal_name]['ISSN'] = journal_ISSN
+                    scopus_journals_dict[journal_name]['eISSN'] = journal_eISSN
+                    scopus_journals_dict[journal_name]['sourcerecord_id'] = sourcerecord_id
+
+                scopus_journals_dict[journal_name]['categories'].add(subject_name)
         print('count journals {}'.format(count_journals))
-        return scopus_categories_dict
+        return scopus_categories_dict, scopus_journals_dict
 
     def match_categories_from_scopus(self, scopus_categories_dict, wos_df):
         # wos_df[['ISSN', 'eISSN']] = wos_df.apply(lambda row: pd.Series(self.remove_dash(row['ISSN'], row['eISSN'])),
@@ -227,11 +240,12 @@ if __name__ == '__main__':
     scopus_categories, scopus_df=psj.get_scopus_categories_and_journals('scopus_categories_full.csv', 'scopus_full_2020.csv', utils)
     wos_df = pwj.get_full_wos_df('wos-core_AHCI.csv', 'wos-core_SCIE.csv',
                                                                          'wos-core_SSCI.csv',  utils)
-    utils.save_obj(wos_df,'wos_df_no_dupes')
+    # utils.save_obj(wos_df,'wos_df_no_dupes')
     # wos_df=utils.load_obj('wos_df_no_dupes')
 
-    scopus_categories_and_journals_dict=psj.create_scopus_categories_dict(scopus_categories,scopus_df,wos_df)
-    utils.save_obj(scopus_categories_and_journals_dict,"scopus_categories_and_journals_dict")
+    scopus_categories_and_journals_dict, scopus_journals_dict=psj.create_scopus_categories_dict(scopus_categories,scopus_df,wos_df)
+    utils.save_obj(scopus_journals_dict, "scopus_journals_dict")
+    # utils.save_obj(scopus_categories_and_journals_dict,"scopus_categories_and_journals_dict")
     exit(0)
     wos_df=utils.load_obj('wos_df_no_dupes')
     scopus_categories_and_journals_dict=utils.load_obj("scopus_categories_and_journals_dict")

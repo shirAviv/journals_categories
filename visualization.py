@@ -91,3 +91,23 @@ class Visualization():
         fig.legend(handles, labels, loc=(0.80, 0.55))
         plt.show()
 
+    def plt_histogram_cats(self, df, title):
+        xticks = np.arange(df['num categories'].values.min(),
+                           df['num categories'].values.max() + 1)
+        ax=df.hist(column='num categories', grid=False, zorder=2, rwidth=0.9)
+        ax = ax[0]
+
+        for x in ax:
+            # Despine
+            x.spines['right'].set_visible(False)
+            x.spines['top'].set_visible(False)
+            # x.spines['left'].set_visible(False)
+            # x.tick_params(axis="both", which="both", bottom="off", top="off", labelbottom="on", left="off", right="off",
+            #               labelleft="on")
+            x.set_xticks(xticks)
+            # x.set_xticklabels(df.index, rotation=45)
+
+        plt.xlabel('Number of categories')
+        plt.ylabel('Number of Journals')
+        plt.title(title)
+        plt.show()
