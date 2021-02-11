@@ -156,6 +156,16 @@ class ExtractMetrics:
         r, pValue = stats.pearsonr(journals_with_cats_metrics_wos['num categories'].values, journals_with_cats_metrics_scopus['num categories'].values)
         print('Pearsons correlation categories wos and scopus: r {}. pValue {}'.format(r, pValue))
 
+        print('Calculating wilcoxson rank test correlation for Scopus and wos num categories')
+        stat, pValue = stats.wilcoxon(journals_with_cats_metrics_wos['num categories'].values, journals_with_cats_metrics_scopus['num categories'].values)
+        print('Wilcoxson rank test - categories wos and scopus: stat {}. pValue {}'.format(stat, pValue))
+
+        print('Calculating paired t-test for Scopus and wos num categories')
+        stat, pValue = stats.ttest_rel(journals_with_cats_metrics_wos['num categories'].values,
+                                      journals_with_cats_metrics_scopus['num categories'].values)
+        print('t-test - categories wos and scopus: stat {}. pValue {}'.format(stat, pValue))
+
+
     def find_missing_journals_dont_use(self, journals_with_cats_metrics_wos, journals_with_cats_metrics_scopus):
         journals_with_cats_metrics_wos=journals_with_cats_metrics_wos.sort_values(by='Journal name')
         journals_with_cats_metrics_scopus = journals_with_cats_metrics_scopus.sort_values(by='Journal name')
@@ -191,6 +201,207 @@ class ExtractMetrics:
         return journals_with_cats_metrics_wos, journals_with_cats_metrics_scopus
 
 
+    def find_super_groups_and_intersection_all_journals_wos(self,df):
+        categories=df['journals']
+        sup_group_dict=dict()
+        intersect_group_dict=dict()
+        identity_group_dict=dict()
+        sub_group_dict=dict()
+        for category, journals_data in categories.items():
+
+            journals = set(journals_data['Journal title'].unique())
+
+            for compared_cat, compared_journals_data in categories.items():
+                if category==compared_cat:
+                    continue
+                compared_journals = set(compared_journals_data['Journal title'].unique())
+                if journals.isdisjoint(compared_journals):
+                    continue
+                if journals.issubset(compared_journals) and journals.issuperset(compared_journals):
+                    if not category in identity_group_dict.keys():
+                        identity_group_dict[category] = pd.DataFrame(columns=['category', 'journals', 'percent'])
+                    journals_list = journals
+                    percent = 100 * len(journals_list) / len(compared_journals)
+                    record = {'category': compared_cat, 'journals': journals_list, 'percent': percent}
+                    identity_group_dict[category] = identity_group_dict[category].append(record, ignore_index=True)
+                    continue
+                if journals.issubset(compared_journals):
+                    if not category in sup_group_dict.keys():
+                        sup_group_dict[category] = pd.DataFrame(columns=['category', 'journals', 'percent'])
+                    journals_list=journals
+                    percent=100*len(journals_list)/len(compared_journals)
+                    record={'category':compared_cat,'journals':journals_list,'percent':percent}
+                    sup_group_dict[category] = sup_group_dict[category].append(record, ignore_index=True)
+                    continue
+                if journals.issuperset(compared_journals):
+                    if not category in sub_group_dict.keys():
+                        sub_group_dict[category] = pd.DataFrame(columns=['category', 'journals', 'percent'])
+                    journals_list=compared_journals
+                    percent=100*len(journals_list)/len(journals)
+                    record={'category':compared_cat,'journals':journals_list,'percent':percent}
+                    sub_group_dict[category] = sub_group_dict[category].append(record, ignore_index=True)
+                    continue
+                if not category in intersect_group_dict.keys():
+                    intersect_group_dict[category] = pd.DataFrame(columns=['category', 'journals', 'percent'])
+                journals_list = journals.intersection(compared_journals)
+                percent = 100 * len(journals_list) / len(journals)
+                record = {'category': compared_cat, 'journals': journals_list, 'percent': percent}
+                intersect_group_dict[category] = intersect_group_dict[category].append(record, ignore_index=True)
+
+        return identity_group_dict, sup_group_dict, sub_group_dict, intersect_group_dict
+
+    def find_super_groups_and_intersection_all_journals_scopus(self,categories, threshold):
+        sup_group_dict=dict()
+        intersect_group_dict=dict()
+        identity_group_dict=dict()
+        sub_group_dict=dict()
+        for category, journals_data in categories.items():
+            if isinstance(journals_data, pd.DataFrame):
+                journals=set(journals_data['Journal title'])
+            else:
+                journals = set(journals_data)
+
+            for compared_cat, compared_journals_data in categories.items():
+                if category==compared_cat:
+                    continue
+                if isinstance(compared_journals_data, pd.DataFrame):
+                    compared_journals = set(compared_journals_data['Journal title'])
+                else:
+                    compared_journals = set(compared_journals_data)
+
+                if journals.isdisjoint(compared_journals):
+                    continue
+                if journals.issubset(compared_journals) and journals.issuperset(compared_journals):
+                    journals_list = journals
+                    ratio = len(journals_list) / len(compared_journals)
+                    if not category in identity_group_dict.keys():
+                        identity_group_dict[category] = pd.DataFrame(columns=['category', 'journals', 'ratio'])
+                    record = {'category': compared_cat, 'journals': journals_list, 'ratio': ratio}
+                    identity_group_dict[category] = identity_group_dict[category].append(record, ignore_index=True)
+                    continue
+                if journals.issubset(compared_journals):
+                    journals_list = journals
+                    ratio = len(journals_list) / len(compared_journals)
+                    if ratio>=threshold:
+                        # print('found in supset')
+                        if not category in identity_group_dict.keys():
+                            identity_group_dict[category] = pd.DataFrame(columns=['category', 'journals', 'ratio'])
+                        record = {'category': compared_cat, 'journals': journals_list, 'ratio': ratio}
+                        identity_group_dict[category] = identity_group_dict[category].append(record, ignore_index=True)
+                        continue
+                    if not category in sup_group_dict.keys():
+                        sup_group_dict[category] = pd.DataFrame(columns=['category', 'journals', 'ratio'])
+                    record={'category':compared_cat,'journals':journals_list,'ratio':ratio}
+                    sup_group_dict[category] = sup_group_dict[category].append(record, ignore_index=True)
+                    continue
+                if journals.issuperset(compared_journals):
+                    journals_list = compared_journals
+                    ratio = len(journals_list) / len(journals)
+                    if ratio>=threshold:
+                        # print('found in subset')
+                        if not category in identity_group_dict.keys():
+                            identity_group_dict[category] = pd.DataFrame(columns=['category', 'journals', 'ratio'])
+                        record = {'category': compared_cat, 'journals': journals_list, 'ratio': ratio}
+                        identity_group_dict[category] = identity_group_dict[category].append(record, ignore_index=True)
+                        continue
+                    if not category in sub_group_dict.keys():
+                        sub_group_dict[category] = pd.DataFrame(columns=['category', 'journals', 'ratio'])
+                    record={'category':compared_cat,'journals':journals_list,'ratio':ratio}
+                    sub_group_dict[category] = sub_group_dict[category].append(record, ignore_index=True)
+                    continue
+                journals_list = journals.intersection(compared_journals)
+                ratio1 = len(journals_list) / len(journals)
+                ratio2 = len(journals_list) / len(compared_journals)
+                if ratio1 >= threshold and ratio2 >= threshold:
+                    # print('found in intersect')
+                    if not category in identity_group_dict.keys():
+                        identity_group_dict[category] = pd.DataFrame(columns=['category', 'journals', 'ratio'])
+                    record = {'category': compared_cat, 'journals': journals_list, 'ratio': ratio1}
+                    identity_group_dict[category] = identity_group_dict[category].append(record, ignore_index=True)
+                    continue
+                else:
+                    if ratio1>= threshold:
+                        if not category in sup_group_dict.keys():
+                            sup_group_dict[category] = pd.DataFrame(columns=['category', 'journals', 'ratio'])
+                        record = {'category': compared_cat, 'journals': journals_list, 'ratio': ratio1}
+                        sup_group_dict[category] = sup_group_dict[category].append(record, ignore_index=True)
+                        continue
+                    if ratio2>=threshold:
+                        if not category in sub_group_dict.keys():
+                            sub_group_dict[category] = pd.DataFrame(columns=['category', 'journals', 'ratio'])
+                        record = {'category': compared_cat, 'journals': journals_list, 'ratio': ratio2}
+                        sub_group_dict[category] = sub_group_dict[category].append(record, ignore_index=True)
+                        continue
+                if not category in intersect_group_dict.keys():
+                    intersect_group_dict[category] = pd.DataFrame(columns=['category', 'journals', 'ratio'])
+                record = {'category': compared_cat, 'journals': journals_list, 'ratio': ratio1}
+                intersect_group_dict[category] = intersect_group_dict[category].append(record, ignore_index=True)
+
+        return identity_group_dict, sup_group_dict, sub_group_dict, intersect_group_dict
+
+    def num_journals_in_cat(self, e):
+        return len(e)
+
+
+    def find_groups(self,df):
+        print('total num categories {}'.format(len(df)))
+
+        categories=df['journals']
+
+        for step in range(100,95, -5):
+            threshold=step/100
+            identity_group_dict, sup_group_dict, sub_group_dict, intersect_group_dict = self.find_super_groups_and_intersection_all_journals_scopus(
+                categories, threshold)
+            print(
+                '\nsize of identity group dict {}, super group dict {}, sub group dict {}, intersect group dict {}'.format(
+                    len(identity_group_dict), len(sup_group_dict), len(sub_group_dict), len(intersect_group_dict)))
+            if len(identity_group_dict) > 0:
+                print('\nidentity groups for threshold {}'.format(threshold))
+                for category, groups_data in identity_group_dict.items():
+                    print(category, groups_data['category'].values, groups_data['ratio'].values)
+            if len(sub_group_dict) > 0:
+                print('\nsub groups for threshold {}'.format(threshold))
+                for category, groups_data in sub_group_dict.items():
+                    print(category, groups_data['category'].values, groups_data['ratio'].values)
+
+            if len(sup_group_dict) > 0:
+                print('\nsuper groups for threshold {}'.format(threshold))
+                for category, groups_data in sup_group_dict.items():
+                    print(category, groups_data['category'].values, groups_data['ratio'].values)
+        intersect_categories=set(intersect_group_dict.keys())
+        all_categories=set(categories.keys())
+        disjoint_and_proper_subset_categories=all_categories.difference(intersect_categories)
+        print(disjoint_and_proper_subset_categories)
+        for cat in disjoint_and_proper_subset_categories:
+            print('\ncat {}, num journals in cat {}'.format(cat, len(categories[cat])))
+        intersect_df=pd.DataFrame(columns=['categories','num intersecting categories'])
+        for key,val in intersect_group_dict.items():
+            record={'categories':key,'num intersecting categories':int(len(val))}
+            intersect_df=intersect_df.append(record, ignore_index=True)
+        intersect_df['num intersecting categories']=intersect_df['num intersecting categories'].apply(pd.to_numeric, errors='coerce')
+
+        return intersect_df
+
+    def get_small_categories(self,df, name):
+        df['count journals'] = df.apply(lambda row: pd.Series(len(row['journals'])), axis=1)
+        sorted_cats = df.sort_values(by='count journals')
+        small_cats=sorted_cats.loc[sorted_cats['count journals']<10, 'count journals']
+        small_cats=small_cats.append(pd.Series(len(small_cats), index=[name]))
+        print(small_cats)
+        print('total {}'.format(len(small_cats)))
+        return small_cats
+
+    def get_large_categories(self,df, name):
+        df['count journals'] = df.apply(lambda row: pd.Series(len(row['journals'])), axis=1)
+        sorted_cats = df.sort_values(by='count journals')
+        large_cats = sorted_cats.loc[sorted_cats['count journals'] > 300, 'count journals']
+        large_cats = large_cats.append(pd.Series(len(large_cats), index=[name]))
+        print(large_cats)
+        print('total {}'.format(len(large_cats)))
+        return large_cats
+
+
+
 if __name__ == '__main__':
     start_time = datetime.now()
     print(start_time)
@@ -209,13 +420,43 @@ if __name__ == '__main__':
 
     journals_with_cats_metrics_wos = utils.load_obj("wos_journals_with_metrics")
     # vis.plt_histogram_cats(journals_with_cats_metrics_wos, title="WOS number of categories per journal distribution")
-    extractMetrics.get_wos_correlations(journals_with_cats_metrics_wos)
+    # extractMetrics.get_wos_correlations(journals_with_cats_metrics_wos)
 
     journals_with_cats_metrics_scopus = utils.load_obj("scopus_journals_with_metrics")
     # vis.plt_histogram_cats(journals_with_cats_metrics_scopus, title="Scopus number of categories per journal distribution")
-    extractMetrics.get_scopus_correlations(journals_with_cats_metrics_scopus)
+    # extractMetrics.get_scopus_correlations(journals_with_cats_metrics_scopus)
 
-    extractMetrics.get_inter_system_correlations(journals_with_cats_metrics_wos, journals_with_cats_metrics_scopus)
+    # extractMetrics.get_inter_system_correlations(journals_with_cats_metrics_wos, journals_with_cats_metrics_scopus)
+
+    df1 = utils.load_obj('wos_to_scopus_categories_for_group_mapping')
+    name='Total_num_large_cats_wos'
+    # small_cats_wos=extractMetrics.get_small_categories(df1, name)
+    # large_cats_wos=extractMetrics.get_large_categories(df1,name)
+    # intersect_df1=extractMetrics.find_groups(df1)
+    # utils.save_obj(intersect_df1,'wos_num_intersections')
+    intersect_df1= utils.load_obj('wos_num_intersections')
+    vis.plt_histogram_cats_intersection(intersect_df1, title='Categories intersections in WOS')
+
+
+    # identity_group_dict, sup_group_dict, sub_group_dict, intersect_group_dict=extractMetrics.find_super_groups_and_intersection_all_journals_wos(df1)
+    df2 = utils.load_obj('scopus_to_wos_categories_for_group_mapping')
+    name = 'Total_num_large_cats_scopus'
+    # small_cats_scopus=extractMetrics.get_small_categories(df2.T,name)
+    # small_cats_wos=small_cats_wos.append(small_cats_scopus)
+    # utils.save_obj(small_cats_wos,"inter_systems_small_categories")
+    # utils.write_to_csv(small_cats_wos, 'inter_systems_small_categories.csv', index=True)
+
+    # large_cats_scopus=extractMetrics.get_large_categories(df2.T,name)
+    # large_cats_wos=large_cats_wos.append(large_cats_scopus)
+    # utils.save_obj(large_cats_wos,"inter_systems_large_categories")
+    # utils.write_to_csv(large_cats_wos,'inter_systems_large_categories.csv', index=True)
+    # print(large_cats_wos)
+    # intersect_df2=extractMetrics.find_groups(df2.T)
+    # utils.save_obj(intersect_df2, 'scopus_num_intersections')
+    intersect_df2= utils.load_obj('scopus_num_intersections')
+    vis.plt_histogram_cats_intersection(intersect_df2, title='Categories intersections in Scopus')
+
+
 
 
 

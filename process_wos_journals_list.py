@@ -321,6 +321,24 @@ class ProcessWOSJournals:
 
 
 
+    def order_categories_by_size(self, df):
+        categories=df['journals']
+        categories_dict=dict()
+        for index, category in categories.items():
+            num_journals_in_cat=len(category)
+            if not num_journals_in_cat in categories_dict.keys():
+                categories_dict[num_journals_in_cat]=dict()
+            categories_dict[num_journals_in_cat][index]=category
+        categories_dict=dict(sorted(categories_dict.items(), key=lambda item: item[0]))
+        # grouped = categories.groupby(lambda x: len(categories[x]))
+        # cat_by_num_journals=grouped.count()
+        return categories_dict
+
+
+
+
+
+
 
 if __name__ == '__main__':
     start_time = datetime.now()
@@ -329,13 +347,13 @@ if __name__ == '__main__':
     pwj=ProcessWOSJournals()
     vis=Visualization()
     psj=ProcessScopusJournals()
-    wos_categories_dict, wos_df=pwj.get_wos_categories_and_journals('wos_categories.csv', 'wos-core_SCIE.csv', 'wos-core_SSCI.csv', 'wos-core_AHCI.csv', utils)
-    scopus_categories, scopus_df=psj.get_scopus_categories_and_journals('scopus_categories_full.csv', 'scopus_full_2020.csv',utils)
+    # wos_categories_dict, wos_df=pwj.get_wos_categories_and_journals('wos_categories.csv', 'wos-core_SCIE.csv', 'wos-core_SSCI.csv', 'wos-core_AHCI.csv', utils)
+    # scopus_categories, scopus_df=psj.get_scopus_categories_and_journals('scopus_categories_full.csv', 'scopus_full_2020.csv',utils)
 
-    wos_to_scopus_categories_df, wos_journals_dict=pwj.match_categories_from_wos_2(wos_categories_dict,scopus_categories,scopus_df)
+    # wos_to_scopus_categories_df, wos_journals_dict=pwj.match_categories_from_wos_2(wos_categories_dict,scopus_categories,scopus_df)
     # utils.write_to_csv(wos_to_scopus_categories_df,'wos_to_scopus_categories_for_group_mapping.csv')
     # utils.save_obj(wos_to_scopus_categories_df,'wos_to_scopus_categories_for_group_mapping')
-    utils.save_obj(wos_journals_dict, "wos_journals_dict")
+    # utils.save_obj(wos_journals_dict, "wos_journals_dict")
 
     exit(0)
     # mapping=pwj.categories_mapping(df)

@@ -20,10 +20,11 @@ cs=CoverSet()
 # scopus_categories_and_journals_dict=psj.create_scopus_categories_dict(scopus_categories,scopus_df,wos_df)
 # utils.save_obj(scopus_categories_and_journals_dict,"scopus_categories_and_journals_dict")
 
+
 scopus_categories_and_journals_dict=utils.load_obj("scopus_categories_and_journals_dict")
 df1 = utils.load_obj('wos_to_scopus_categories_for_group_mapping')
 df2 = utils.load_obj('scopus_to_wos_categories_for_group_mapping')
-
+pwj.split_categories_by_size(df1,0.9)
 
 
 # all_wos_journals_to_scopus_categories_dict = pwj.get_scopus_categories_for_all_journals(df1)
