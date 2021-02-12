@@ -2,6 +2,7 @@ from utils import Utils
 from process_wos_journals_list import ProcessWOSJournals
 from cover_set import CoverSet
 from process_scopus_journals_list import ProcessScopusJournals
+from visualization import Visualization
 import pandas as pd
 import csv
 import os
@@ -14,12 +15,13 @@ utils=Utils(path=path)
 pwj=ProcessWOSJournals()
 psj=ProcessScopusJournals()
 cs=CoverSet()
-
+vis=Visualization()
 # wos_categories_dict, wos_df=pwj.get_wos_categories_and_journals('wos_categories.csv', 'wos-core_SCIE.csv', 'wos-core_SSCI.csv', 'wos-core_AHCI.csv', utils)
 #scopus_categories, scopus_df=pwj.get_scopus_categories_and_journals('scopus_categories_full.csv', 'scopus_full_2020.csv', utils)
 # scopus_categories_and_journals_dict=psj.create_scopus_categories_dict(scopus_categories,scopus_df,wos_df)
 # utils.save_obj(scopus_categories_and_journals_dict,"scopus_categories_and_journals_dict")
 
+wos_journals_dict = utils.load_obj("wos_journals_dict")
 
 scopus_categories_and_journals_dict=utils.load_obj("scopus_categories_and_journals_dict")
 df1 = utils.load_obj('wos_to_scopus_categories_for_group_mapping')

@@ -1,4 +1,6 @@
 import matplotlib.pyplot as plt
+from matplotlib_venn import venn2, venn2_circles, venn2_unweighted
+from matplotlib_venn import venn3, venn3_circles
 import numpy as np
 from textwrap import wrap
 from utils import Utils
@@ -133,4 +135,8 @@ class Visualization():
         plt.xlabel('Number of categories')
         plt.ylabel('Number of intersecting categories')
         plt.title(title)
+        plt.show()
+
+    def create_venn_diagrams(self,subsets, labels):
+        venn2(subsets=subsets, set_labels=labels, set_colors=('purple', 'skyblue'), alpha=0.7)
         plt.show()

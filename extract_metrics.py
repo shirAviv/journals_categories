@@ -250,7 +250,7 @@ class ExtractMetrics:
 
         return identity_group_dict, sup_group_dict, sub_group_dict, intersect_group_dict
 
-    def find_super_groups_and_intersection_all_journals_scopus(self,categories, threshold):
+    def find_super_groups_and_intersection_all_journals(self,categories, threshold):
         sup_group_dict=dict()
         intersect_group_dict=dict()
         identity_group_dict=dict()
@@ -350,7 +350,7 @@ class ExtractMetrics:
 
         for step in range(100,95, -5):
             threshold=step/100
-            identity_group_dict, sup_group_dict, sub_group_dict, intersect_group_dict = self.find_super_groups_and_intersection_all_journals_scopus(
+            identity_group_dict, sup_group_dict, sub_group_dict, intersect_group_dict = self.find_super_groups_and_intersection_all_journals(
                 categories, threshold)
             print(
                 '\nsize of identity group dict {}, super group dict {}, sub group dict {}, intersect group dict {}'.format(
@@ -380,7 +380,7 @@ class ExtractMetrics:
             intersect_df=intersect_df.append(record, ignore_index=True)
         intersect_df['num intersecting categories']=intersect_df['num intersecting categories'].apply(pd.to_numeric, errors='coerce')
 
-        return intersect_df
+        return intersect_df, identity_group_dict, sup_group_dict, sub_group_dict, intersect_group_dict
 
     def get_small_categories(self,df, name):
         df['count journals'] = df.apply(lambda row: pd.Series(len(row['journals'])), axis=1)
@@ -401,6 +401,91 @@ class ExtractMetrics:
         return large_cats
 
 
+    def prep_data_for_venn_subset(self,dict):
+        for cat, item in dict.items():
+            num_journals_in_intersection = len(item['journals'].values[0])
+            num_journals= num_journals_in_intersection / item['ratio'].values[0]
+            subsets=(num_journals, 0, num_journals_in_intersection)
+            labels=(cat, item['category'].values[0])
+            vis.create_venn_diagrams(subsets, labels)
+            print(num_journals)
+
+    def prep_data_for_venn_intersect(self,dict, threshold,df):
+        for cat, item in dict.items():
+            num_journals_in_cat=len(df[cat]['journals'])
+            records_above_threshold=item[item['ratio']>threshold]
+            if len(records_above_threshold)==0:
+                continue
+            for record in records_above_threshold.iterrows():
+                other_cat_name = record[1]['category']
+                num_journals_in_intersection = len(record[1]['journals'])
+                num_journals_in_other_cat = len(df[other_cat_name]['journals'])
+                subsets = (num_journals_in_cat, num_journals_in_other_cat, num_journals_in_intersection)
+                labels = (cat, other_cat_name)
+                vis.create_venn_diagrams(subsets, labels)
+
+    def run_small_and_large_cats_wos(self, df):
+        name = 'Total_num_small_cats_wos'
+        small_cats_wos=extractMetrics.get_small_categories(df, name)
+        name = 'Total_num_large_cats_wos'
+        large_cats_wos=extractMetrics.get_large_categories(df,name)
+        return small_cats_wos, large_cats_wos
+
+    def run_small_and_large_cats_scopus(self,df):
+        name = 'Total_num_small_cats_scopus'
+        small_cats_scopus=extractMetrics.get_small_categories(df.T,name)
+        name = 'Total_num_large_cats_scopus'
+        large_cats_scopus=extractMetrics.get_large_categories(df.T,name)
+        return small_cats_scopus, large_cats_scopus
+
+    def run_small_and_large_cats(self,wos_df, scopus_df):
+        small_cats_wos, large_cats_wos=self.run_small_and_large_cats_wos(wos_df)
+        small_cats_scopus, large_cats_scopus=self.run_small_and_large_cats_scopus(scopus_df)
+        small_cats_wos=small_cats_wos.append(small_cats_scopus)
+        utils.save_obj(small_cats_wos,"inter_systems_small_categories")
+        utils.write_to_csv(small_cats_wos, 'inter_systems_small_categories.csv', index=True)
+        large_cats_wos=large_cats_wos.append(large_cats_scopus)
+        utils.save_obj(large_cats_wos,"inter_systems_large_categories")
+        utils.write_to_csv(large_cats_wos,'inter_systems_large_categories.csv', index=True)
+
+    def prep_data_for_venn_plots(self,wos_df,sub_group_dict_wos, intersect_group_dict_wos, scopus_df, sub_group_dict_scopus,intersect_group_dict_scopus ):
+        extractMetrics.prep_data_for_venn_subset(sub_group_dict_wos)
+        extractMetrics.prep_data_for_venn_intersect(intersect_group_dict_wos, 0.9, wos_df.T)
+        print('0.8')
+        extractMetrics.prep_data_for_venn_intersect(intersect_group_dict_wos, 0.8, wos_df.T)
+
+        extractMetrics.prep_data_for_venn_subset(sub_group_dict_scopus)
+        extractMetrics.prep_data_for_venn_intersect(intersect_group_dict_scopus,0.8,scopus_df)
+
+    def plt_histograms_intersect(self):
+        intersect_df1= utils.load_obj('wos_num_intersections')
+        vis.plt_histogram_cats_intersection(intersect_df1, title='Categories intersections in WOS')
+        intersect_df2= utils.load_obj('scopus_num_intersections')
+        vis.plt_histogram_cats_intersection(intersect_df2, title='Categories intersections in Scopus')
+
+    def plt_histograms_num_cats(self):
+        journals_with_cats_metrics_wos = utils.load_obj("wos_journals_with_metrics")
+        vis.plt_histogram_cats(journals_with_cats_metrics_wos, title="WOS number of categories per journal distribution")
+        journals_with_cats_metrics_scopus = utils.load_obj("scopus_journals_with_metrics")
+        vis.plt_histogram_cats(journals_with_cats_metrics_scopus, title="Scopus number of categories per journal distribution")
+
+    def create_journals_with_cats_metrics(self):
+        journals_with_cats_metrics=extractMetrics.extract_wos_metrics('wos_journals_metrics.csv')
+        utils.save_obj(journals_with_cats_metrics,"wos_journals_with_metrics")
+
+        journals_with_cats_metrics=extractMetrics.extract_scopus_metrics('scopus_scores_2019.csv')
+        utils.save_obj(journals_with_cats_metrics, "scopus_journals_with_metrics")
+
+        journals_with_cats_metrics_wos, journals_with_cats_metrics_scopus= extractMetrics.find_missing_journals(journals_with_cats_metrics_wos,journals_with_cats_metrics_scopus)
+        utils.save_obj(journals_with_cats_metrics_wos,"wos_journals_with_metrics")
+        utils.save_obj(journals_with_cats_metrics_scopus, "scopus_journals_with_metrics")
+
+    def get_correlations_all_journals(self):
+        journals_with_cats_metrics_wos = utils.load_obj("wos_journals_with_metrics")
+        journals_with_cats_metrics_scopus = utils.load_obj("scopus_journals_with_metrics")
+        self.get_wos_correlations(journals_with_cats_metrics_wos)
+        self.get_scopus_correlations(journals_with_cats_metrics_scopus)
+        self.get_inter_system_correlations(journals_with_cats_metrics_wos, journals_with_cats_metrics_scopus)
 
 if __name__ == '__main__':
     start_time = datetime.now()
@@ -408,54 +493,20 @@ if __name__ == '__main__':
     utils=Utils(path=path)
     vis=Visualization()
     extractMetrics=ExtractMetrics()
-    # journals_with_cats_metrics=extractMetrics.extract_wos_metrics('wos_journals_metrics.csv')
-    # utils.save_obj(journals_with_cats_metrics,"wos_journals_with_metrics")
 
-    # journals_with_cats_metrics=extractMetrics.extract_scopus_metrics('scopus_scores_2019.csv')
-    # utils.save_obj(journals_with_cats_metrics, "scopus_journals_with_metrics")
-
-    # journals_with_cats_metrics_wos, journals_with_cats_metrics_scopus= extractMetrics.find_missing_journals(journals_with_cats_metrics_wos,journals_with_cats_metrics_scopus)
-    # utils.save_obj(journals_with_cats_metrics_wos,"wos_journals_with_metrics")
-    # utils.save_obj(journals_with_cats_metrics_scopus, "scopus_journals_with_metrics")
-
-    journals_with_cats_metrics_wos = utils.load_obj("wos_journals_with_metrics")
-    # vis.plt_histogram_cats(journals_with_cats_metrics_wos, title="WOS number of categories per journal distribution")
-    # extractMetrics.get_wos_correlations(journals_with_cats_metrics_wos)
-
-    journals_with_cats_metrics_scopus = utils.load_obj("scopus_journals_with_metrics")
-    # vis.plt_histogram_cats(journals_with_cats_metrics_scopus, title="Scopus number of categories per journal distribution")
-    # extractMetrics.get_scopus_correlations(journals_with_cats_metrics_scopus)
-
-    # extractMetrics.get_inter_system_correlations(journals_with_cats_metrics_wos, journals_with_cats_metrics_scopus)
 
     df1 = utils.load_obj('wos_to_scopus_categories_for_group_mapping')
-    name='Total_num_large_cats_wos'
-    # small_cats_wos=extractMetrics.get_small_categories(df1, name)
-    # large_cats_wos=extractMetrics.get_large_categories(df1,name)
-    # intersect_df1=extractMetrics.find_groups(df1)
+    intersect_df1, identity_group_dict_wos, sup_group_dict_wos, sub_group_dict_wos, intersect_group_dict_wos=extractMetrics.find_groups(df1)
     # utils.save_obj(intersect_df1,'wos_num_intersections')
-    intersect_df1= utils.load_obj('wos_num_intersections')
-    vis.plt_histogram_cats_intersection(intersect_df1, title='Categories intersections in WOS')
-
 
     # identity_group_dict, sup_group_dict, sub_group_dict, intersect_group_dict=extractMetrics.find_super_groups_and_intersection_all_journals_wos(df1)
     df2 = utils.load_obj('scopus_to_wos_categories_for_group_mapping')
-    name = 'Total_num_large_cats_scopus'
-    # small_cats_scopus=extractMetrics.get_small_categories(df2.T,name)
-    # small_cats_wos=small_cats_wos.append(small_cats_scopus)
-    # utils.save_obj(small_cats_wos,"inter_systems_small_categories")
-    # utils.write_to_csv(small_cats_wos, 'inter_systems_small_categories.csv', index=True)
-
-    # large_cats_scopus=extractMetrics.get_large_categories(df2.T,name)
-    # large_cats_wos=large_cats_wos.append(large_cats_scopus)
-    # utils.save_obj(large_cats_wos,"inter_systems_large_categories")
-    # utils.write_to_csv(large_cats_wos,'inter_systems_large_categories.csv', index=True)
-    # print(large_cats_wos)
-    # intersect_df2=extractMetrics.find_groups(df2.T)
+    intersect_df2, identity_group_dict_scopus, sup_group_dict_scopus, sub_group_dict_scopus, intersect_group_dict_scopus=extractMetrics.find_groups(df2.T)
     # utils.save_obj(intersect_df2, 'scopus_num_intersections')
-    intersect_df2= utils.load_obj('scopus_num_intersections')
-    vis.plt_histogram_cats_intersection(intersect_df2, title='Categories intersections in Scopus')
 
+    # extractMetrics.get_correlations_all_journals()
+    # extractMetrics.run_small_and_large_cats(df1,df2)
+    # extractMetrics.prep_data_for_venn_plots(df1, sub_group_dict_wos,intersect_group_dict_wos, df2, sub_group_dict_scopus, intersect_group_dict_scopus)
 
 
 
