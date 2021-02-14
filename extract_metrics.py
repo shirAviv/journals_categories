@@ -6,6 +6,7 @@ from scipy import stats
 from scipy.stats import shapiro
 from visualization import Visualization
 import numpy as np
+from collections import Counter
 
 
 
@@ -487,6 +488,116 @@ class ExtractMetrics:
         self.get_scopus_correlations(journals_with_cats_metrics_scopus)
         self.get_inter_system_correlations(journals_with_cats_metrics_wos, journals_with_cats_metrics_scopus)
 
+
+    def create_journal_ranking_by_category_wos(self,df, journals_with_metrics):
+        categories = df['journals']
+        for category, journals_data in categories.items():
+            count_missing_metrics=0
+            num_journals=len(journals_data)
+            jIF=[]
+            eigenfactor=[]
+            norm_Eigenfactor=[]
+            five_year_JIF=[]
+            for journal in journals_data.iterrows():
+                journal_name=journal[1]['Journal title']
+                metrics = journals_with_metrics[journals_with_metrics['Journal name'] == journal_name].copy()
+                if len(metrics) == 0:
+                    count_missing_metrics+=1
+                    jIF.append(np.nan)
+                    five_year_JIF.append(np.nan)
+                    eigenfactor.append(np.nan)
+                    norm_Eigenfactor.append(np.nan)
+                else:
+                    jIF.append(metrics['JIF'].values[0])
+                    five_year_JIF.append(metrics['5 year JIF'].values[0])
+                    eigenfactor.append(metrics['Eigenfactor'].values[0])
+                    norm_Eigenfactor.append(metrics['Norm Eigenfactor'].values[0])
+
+            journals_data['JIF']=jIF
+            journals_data['Five year JIF'] = five_year_JIF
+            journals_data['Eigenfactor'] = eigenfactor
+            journals_data['Norm Eigenfactor'] = norm_Eigenfactor
+
+            journals_data.sort_values(by=['JIF'], inplace=True, ascending=False)
+            journals_data.reset_index(inplace=True)
+            journals_data['Rank JIF'] = 4
+            journals_data.loc[0:num_journals/4, 'Rank JIF'] = 1
+            journals_data.loc[(num_journals / 4):num_journals/2, 'Rank JIF'] = 2
+            journals_data.loc[(num_journals / 2):3*(num_journals/4), 'Rank JIF'] = 3
+            del (journals_data['index'])
+
+            journals_data.sort_values(by=['Five year JIF'], inplace=True, ascending=False)
+            journals_data.reset_index(inplace=True)
+            journals_data['Rank Five year JIF'] = 4
+            journals_data.loc[0:num_journals / 4, 'Rank Five year JIF'] = 1
+            journals_data.loc[(num_journals / 4):num_journals / 2, 'Rank Five year JIF'] = 2
+            journals_data.loc[(num_journals / 2):3 * (num_journals / 4), 'Rank Five year JIF'] = 3
+            del (journals_data['index'])
+
+            journals_data.sort_values(by=['Eigenfactor'], inplace=True, ascending=False)
+            journals_data.reset_index(inplace=True)
+            journals_data['Rank Eigenfactor'] = 4
+            journals_data.loc[0:num_journals / 4, 'Rank Eigenfactor'] = 1
+            journals_data.loc[(num_journals / 4):num_journals / 2, 'Rank Eigenfactor'] = 2
+            journals_data.loc[(num_journals / 2):3 * (num_journals / 4), 'Rank Eigenfactor'] = 3
+            del (journals_data['index'])
+
+            journals_data.sort_values(by=['Norm Eigenfactor'], inplace=True, ascending=False)
+            journals_data.reset_index(inplace=True)
+            journals_data['Rank Norm Eigenfactor'] = 4
+            journals_data.loc[0:num_journals / 4, 'Rank Norm Eigenfactor'] = 1
+            journals_data.loc[(num_journals / 4):num_journals / 2, 'Rank Norm Eigenfactor'] = 2
+            journals_data.loc[(num_journals / 2):3 * (num_journals / 4), 'Rank Norm Eigenfactor'] = 3
+            del (journals_data['index'])
+            if (count_missing_metrics/num_journals>0.1):
+                print('in cat {} number of journals with missing metrics {} out of {}'.format(category,count_missing_metrics,num_journals))
+        return categories
+
+    def get_categories_ranking_mismatch(self):
+        journals_with_cats_metrics_wos = utils.load_obj("wos_journals_with_metrics")
+        journals_with_cats_metrics_wos['Rank JIF'] = np.nan
+        journals_with_cats_metrics_wos['Rank Five year JIF'] = np.nan
+        journals_with_cats_metrics_wos['Rank Eigenfactor'] = np.nan
+        journals_with_cats_metrics_wos['Rank Norm Eigenfactor'] = np.nan
+        categories_with_ranks_df=utils.load_obj('categories_with_ranks_df')
+        wos_journals_dict = utils.load_obj("wos_journals_dict")
+        for journal_name, item in wos_journals_dict.items():
+            rank_jIF = []
+            rank_eigenfactor = []
+            rank_norm_eigenfactor = []
+            rank_five_year_JIF = []
+            for category in item['categories']:
+                journals_in_cat= categories_with_ranks_df[category]
+                metrics = journals_in_cat[journals_in_cat['Journal name'] == journal_name].copy()
+                if len(metrics) == 0:
+                    rank_jIF.append(np.nan)
+                    rank_five_year_JIF.append(np.nan)
+                    rank_eigenfactor.append(np.nan)
+                    rank_norm_eigenfactor.append(np.nan)
+                else:
+                    rank_jIF.append(metrics['Rank JIF'].values[0])
+                    rank_five_year_JIF.append(metrics['Rank five year JIF'].values[0])
+                    rank_eigenfactor.append(metrics['Rank Eigenfactor'].values[0])
+                    rank_norm_eigenfactor.append(metrics['Rank Norm Eigenfactor'].values[0])
+
+
+
+
+
+
+
+    def calc_mismatch(self, ranks_list):
+        ret_val=0
+        if len(list)>1:
+            occurence_count = Counter(ranks_list)
+            most_frequent = occurence_count.most_common(1)[0][0]
+            for item in ranks_list:
+                if np.isnan(item):
+                    return np.nan
+                ret_val+=abs(most_frequent-item)
+        return ret_val
+
+
 if __name__ == '__main__':
     start_time = datetime.now()
     print(start_time)
@@ -496,18 +607,21 @@ if __name__ == '__main__':
 
 
     df1 = utils.load_obj('wos_to_scopus_categories_for_group_mapping')
-    intersect_df1, identity_group_dict_wos, sup_group_dict_wos, sub_group_dict_wos, intersect_group_dict_wos=extractMetrics.find_groups(df1)
+    # intersect_df1, identity_group_dict_wos, sup_group_dict_wos, sub_group_dict_wos, intersect_group_dict_wos=extractMetrics.find_groups(df1)
     # utils.save_obj(intersect_df1,'wos_num_intersections')
 
     # identity_group_dict, sup_group_dict, sub_group_dict, intersect_group_dict=extractMetrics.find_super_groups_and_intersection_all_journals_wos(df1)
     df2 = utils.load_obj('scopus_to_wos_categories_for_group_mapping')
-    intersect_df2, identity_group_dict_scopus, sup_group_dict_scopus, sub_group_dict_scopus, intersect_group_dict_scopus=extractMetrics.find_groups(df2.T)
+    # intersect_df2, identity_group_dict_scopus, sup_group_dict_scopus, sub_group_dict_scopus, intersect_group_dict_scopus=extractMetrics.find_groups(df2.T)
     # utils.save_obj(intersect_df2, 'scopus_num_intersections')
 
     # extractMetrics.get_correlations_all_journals()
     # extractMetrics.run_small_and_large_cats(df1,df2)
     # extractMetrics.prep_data_for_venn_plots(df1, sub_group_dict_wos,intersect_group_dict_wos, df2, sub_group_dict_scopus, intersect_group_dict_scopus)
 
-
+    # journals_with_cats_metrics_wos = utils.load_obj("wos_journals_with_metrics")
+    # categories_with_ranks_df=extractMetrics.create_journal_ranking_by_category_wos(df1,journals_with_cats_metrics_wos)
+    # utils.save_obj(categories_with_ranks_df,'categories_with_ranks_df')
+    extractMetrics.get_categories_ranking_mismatch()
 
 
