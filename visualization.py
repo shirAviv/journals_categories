@@ -12,8 +12,12 @@ import csv
 import os
 
 class Visualization():
+    font = {
+        # 'family': 'Ariel',
+            'weight': 'normal',
+            'size': 12}
 
-
+    plt.rc('font', **font)
 
     def plt_match_by_threshold(self,df_w_to_s,df_s_to_w, title):
         f = plt.figure()
@@ -137,6 +141,57 @@ class Visualization():
         plt.title(title)
         plt.show()
 
-    def create_venn_diagrams(self,subsets, labels):
-        venn2(subsets=subsets, set_labels=labels, set_colors=('purple', 'skyblue'), alpha=0.7)
+
+    def get_subplots_for_venn(self):
+        figure, axes = plt.subplots(4, 3)
+        return figure, axes
+
+    def create_venn_diagrams(self,subsets, labels, ax):
+        venn2(subsets=subsets, set_labels=labels, set_colors=('purple', 'skyblue'), alpha=0.7, ax=ax)
+        # plt.show()
+
+    def plt_groups_data(self, groups, plt_by, title):
+        fig, axs = plt.subplots(1, 1, facecolor='w')
+        ax1 = axs
+        ax6 = ax1.twinx()
+        ax1.yaxis.tick_left()
+        ax1.tick_params(axis='y', color='white', labelsize='14')
+        ax6.yaxis.tick_right()
+        ax6.tick_params(axis='y', color='white', labelsize='14')
+        ylabel=plt_by
+        mean_score = groups[plt_by].mean()
+        highest_score = groups[plt_by].max()
+        median_score = groups[plt_by].median()
+        percentiles_10 = groups[plt_by].quantile([0.1])
+        percentiles_30 = groups[plt_by].quantile([0.3])
+        percentiles_75 = groups[plt_by].quantile([0.75])
+        percentiles_90 = groups[plt_by].quantile([0.9])
+        print('highest JIF {}'.format(highest_score))
+        print('mean JIF {}'.format(mean_score))
+        print('median JIF {}'.format(median_score))
+        self.plot_category_groups(ax1, mean_score, ylabel=plt_by, label='Mean')
+        self.plot_category_groups(ax1, median_score, ylabel=plt_by, label='Median')
+        self.plot_category_groups(ax6, highest_score, ylabel='Max '+plt_by, label='Max', linestyle='dashed')
+        # self.plot_category_groups(ax1, percentiles_10.reset_index(1)[plt_by], ylabel=plt_by, label='10th percentile')
+        self.plot_category_groups(ax1, percentiles_30.reset_index(1)[plt_by], ylabel=plt_by, label='30th percentile')
+        # self.plot_category_groups(ax1, percentiles_75.reset_index(1)[plt_by], ylabel=plt_by, label='75th percentile')
+        self.plot_category_groups(ax1, percentiles_90.reset_index(1)[plt_by], ylabel=plt_by, label='90th percentile')
+        ax1.set_xlabel('Number of Categories')
+        plt.title(title)
+        fig.legend(loc=(0.7, 0.55))
+        plt.show()
+
+
+        # self.plot_category_groups(ax1, groups, ylabel=ylabel, label=label)
+
+    def plot_category_groups(self,axis,groups, ylabel, label, linestyle=None):
+        if linestyle!=None:
+            axis.scatter(groups.index, groups.values, label=label, marker= '*', color='cyan')
+        else:
+            axis.scatter( groups.index, groups.values, label=label)
+        axis.set_ylabel(ylabel)
+
+    def plt_show_and_title(self, title):
+        plt.title(title)
+        # plt.legend()
         plt.show()

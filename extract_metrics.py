@@ -403,13 +403,21 @@ class ExtractMetrics:
 
 
     def prep_data_for_venn_subset(self,dict):
+        fig, ax= vis.get_subplots_for_venn()
+        x=0
+        y=0
         for cat, item in dict.items():
             num_journals_in_intersection = len(item['journals'].values[0])
             num_journals= num_journals_in_intersection / item['ratio'].values[0]
             subsets=(num_journals, 0, num_journals_in_intersection)
             labels=(cat, item['category'].values[0])
-            vis.create_venn_diagrams(subsets, labels)
+            vis.create_venn_diagrams(subsets, labels, ax[x][y])
             print(num_journals)
+            y+=1
+            if y==3:
+                x+=1
+                y=0
+        vis.plt_show_and_title('')
 
     def prep_data_for_venn_intersect(self,dict, threshold,df):
         for cat, item in dict.items():
@@ -450,13 +458,13 @@ class ExtractMetrics:
         utils.write_to_csv(large_cats_wos,'inter_systems_large_categories.csv', index=True)
 
     def prep_data_for_venn_plots(self,wos_df,sub_group_dict_wos, intersect_group_dict_wos, scopus_df, sub_group_dict_scopus,intersect_group_dict_scopus ):
-        extractMetrics.prep_data_for_venn_subset(sub_group_dict_wos)
-        extractMetrics.prep_data_for_venn_intersect(intersect_group_dict_wos, 0.9, wos_df.T)
-        print('0.8')
-        extractMetrics.prep_data_for_venn_intersect(intersect_group_dict_wos, 0.8, wos_df.T)
+        # extractMetrics.prep_data_for_venn_subset(sub_group_dict_wos)
+        # extractMetrics.prep_data_for_venn_intersect(intersect_group_dict_wos, 0.9, wos_df.T)
+        # print('0.8')
+        # extractMetrics.prep_data_for_venn_intersect(intersect_group_dict_wos, 0.8, wos_df.T)
 
         extractMetrics.prep_data_for_venn_subset(sub_group_dict_scopus)
-        extractMetrics.prep_data_for_venn_intersect(intersect_group_dict_scopus,0.8,scopus_df)
+        # extractMetrics.prep_data_for_venn_intersect(intersect_group_dict_scopus,0.8,scopus_df)
 
     def plt_histograms_intersect(self):
         intersect_df1= utils.load_obj('wos_num_intersections')
@@ -471,13 +479,13 @@ class ExtractMetrics:
         vis.plt_histogram_cats(journals_with_cats_metrics_scopus, title="Scopus number of categories per journal distribution")
 
     def create_journals_with_cats_metrics(self):
-        journals_with_cats_metrics=extractMetrics.extract_wos_metrics('wos_journals_metrics.csv')
-        utils.save_obj(journals_with_cats_metrics,"wos_journals_with_metrics")
+        journals_with_cats_metrics_wos=extractMetrics.extract_wos_metrics('wos_journals_metrics.csv')
+        utils.save_obj(journals_with_cats_metrics_wos,"wos_journals_with_metrics")
 
-        journals_with_cats_metrics=extractMetrics.extract_scopus_metrics('scopus_scores_2019.csv')
-        utils.save_obj(journals_with_cats_metrics, "scopus_journals_with_metrics")
+        journals_with_cats_metrics_scopus=extractMetrics.extract_scopus_metrics('scopus_scores_2019.csv')
+        utils.save_obj(journals_with_cats_metrics_scopus, "scopus_journals_with_metrics")
 
-        journals_with_cats_metrics_wos, journals_with_cats_metrics_scopus= extractMetrics.find_missing_journals(journals_with_cats_metrics_wos,journals_with_cats_metrics_scopus)
+        journals_with_cats_metrics_wos, journals_with_cats_metrics_scopus= extractMetrics.find_missing_journals_dont_use(journals_with_cats_metrics_wos,journals_with_cats_metrics_scopus)
         utils.save_obj(journals_with_cats_metrics_wos,"wos_journals_with_metrics")
         utils.save_obj(journals_with_cats_metrics_scopus, "scopus_journals_with_metrics")
 
@@ -520,34 +528,34 @@ class ExtractMetrics:
 
             journals_data.sort_values(by=['JIF'], inplace=True, ascending=False)
             journals_data.reset_index(inplace=True)
-            journals_data['Rank JIF'] = 4
-            journals_data.loc[0:num_journals/4, 'Rank JIF'] = 1
-            journals_data.loc[(num_journals / 4):num_journals/2, 'Rank JIF'] = 2
-            journals_data.loc[(num_journals / 2):3*(num_journals/4), 'Rank JIF'] = 3
+            journals_data['Percentile Rank JIF'] = journals_data.JIF.rank(pct=True)
+            # journals_data.loc[0:num_journals/4, 'Rank JIF'] = 1
+            # journals_data.loc[(num_journals / 4):num_journals/2, 'Rank JIF'] = 2
+            # journals_data.loc[(num_journals / 2):3*(num_journals/4), 'Rank JIF'] = 3
             del (journals_data['index'])
 
-            journals_data.sort_values(by=['Five year JIF'], inplace=True, ascending=False)
-            journals_data.reset_index(inplace=True)
-            journals_data['Rank Five year JIF'] = 4
-            journals_data.loc[0:num_journals / 4, 'Rank Five year JIF'] = 1
-            journals_data.loc[(num_journals / 4):num_journals / 2, 'Rank Five year JIF'] = 2
-            journals_data.loc[(num_journals / 2):3 * (num_journals / 4), 'Rank Five year JIF'] = 3
-            del (journals_data['index'])
+            # journals_data.sort_values(by=['Five year JIF'], inplace=True, ascending=False)
+            # journals_data.reset_index(inplace=True)
+            # journals_data['Rank Five year JIF'] = 4
+            # journals_data.loc[0:num_journals / 4, 'Rank Five year JIF'] = 1
+            # journals_data.loc[(num_journals / 4):num_journals / 2, 'Rank Five year JIF'] = 2
+            # journals_data.loc[(num_journals / 2):3 * (num_journals / 4), 'Rank Five year JIF'] = 3
+            # del (journals_data['index'])
 
-            journals_data.sort_values(by=['Eigenfactor'], inplace=True, ascending=False)
-            journals_data.reset_index(inplace=True)
-            journals_data['Rank Eigenfactor'] = 4
-            journals_data.loc[0:num_journals / 4, 'Rank Eigenfactor'] = 1
-            journals_data.loc[(num_journals / 4):num_journals / 2, 'Rank Eigenfactor'] = 2
-            journals_data.loc[(num_journals / 2):3 * (num_journals / 4), 'Rank Eigenfactor'] = 3
-            del (journals_data['index'])
+            # journals_data.sort_values(by=['Eigenfactor'], inplace=True, ascending=False)
+            # journals_data.reset_index(inplace=True)
+            # journals_data['Rank Eigenfactor'] = 4
+            # journals_data.loc[0:num_journals / 4, 'Rank Eigenfactor'] = 1
+            # journals_data.loc[(num_journals / 4):num_journals / 2, 'Rank Eigenfactor'] = 2
+            # journals_data.loc[(num_journals / 2):3 * (num_journals / 4), 'Rank Eigenfactor'] = 3
+            # del (journals_data['index'])
 
             journals_data.sort_values(by=['Norm Eigenfactor'], inplace=True, ascending=False)
             journals_data.reset_index(inplace=True)
-            journals_data['Rank Norm Eigenfactor'] = 4
-            journals_data.loc[0:num_journals / 4, 'Rank Norm Eigenfactor'] = 1
-            journals_data.loc[(num_journals / 4):num_journals / 2, 'Rank Norm Eigenfactor'] = 2
-            journals_data.loc[(num_journals / 2):3 * (num_journals / 4), 'Rank Norm Eigenfactor'] = 3
+            journals_data['Percentile Rank Norm Eigenfactor'] = journals_data['Norm Eigenfactor'].rank(pct=True)
+            # journals_data.loc[0:num_journals / 4, 'Rank Norm Eigenfactor'] = 1
+            # journals_data.loc[(num_journals / 4):num_journals / 2, 'Rank Norm Eigenfactor'] = 2
+            # journals_data.loc[(num_journals / 2):3 * (num_journals / 4), 'Rank Norm Eigenfactor'] = 3
             del (journals_data['index'])
             if (count_missing_metrics/num_journals>0.1):
                 print('in cat {} number of journals with missing metrics {} out of {}'.format(category,count_missing_metrics,num_journals))
@@ -581,6 +589,25 @@ class ExtractMetrics:
                     rank_norm_eigenfactor.append(metrics['Rank Norm Eigenfactor'].values[0])
 
 
+    def create_clusters_by_categories(self):
+        journals_with_cats_metrics_wos = utils.load_obj("wos_journals_with_metrics")
+        journals_with_cats_metrics_wos_no_outlier_JIF=journals_with_cats_metrics_wos[journals_with_cats_metrics_wos.JIF<=100]
+        groups_by_num_categories=journals_with_cats_metrics_wos_no_outlier_JIF.groupby('num categories')
+        plt_by='JIF'
+        title = 'JIF statistics by number of categories'
+        vis.plt_groups_data(groups_by_num_categories, plt_by=plt_by, title=title)
+        journals_with_cats_metrics_scopus = utils.load_obj("scopus_journals_with_metrics")
+        journals_with_cats_metrics_scopus_no_outlier_citescore=journals_with_cats_metrics_scopus[journals_with_cats_metrics_scopus.CiteScore<=200]
+        groups_by_num_categories = journals_with_cats_metrics_scopus_no_outlier_citescore.groupby('num categories')
+        journals_with_cats_metrics_scopus_no_outlier_sjr = journals_with_cats_metrics_scopus[
+        journals_with_cats_metrics_scopus.SJR <= 70]
+        groups_by_num_categories = journals_with_cats_metrics_scopus_no_outlier_sjr.groupby('num categories')
+        plt_by = 'SJR'
+        title = 'SJR statistics by number of categories'
+        vis.plt_groups_data(groups_by_num_categories, plt_by=plt_by, title=title)
+
+
+
 
 
 
@@ -612,16 +639,17 @@ if __name__ == '__main__':
 
     # identity_group_dict, sup_group_dict, sub_group_dict, intersect_group_dict=extractMetrics.find_super_groups_and_intersection_all_journals_wos(df1)
     df2 = utils.load_obj('scopus_to_wos_categories_for_group_mapping')
-    # intersect_df2, identity_group_dict_scopus, sup_group_dict_scopus, sub_group_dict_scopus, intersect_group_dict_scopus=extractMetrics.find_groups(df2.T)
+    intersect_df2, identity_group_dict_scopus, sup_group_dict_scopus, sub_group_dict_scopus, intersect_group_dict_scopus=extractMetrics.find_groups(df2.T)
     # utils.save_obj(intersect_df2, 'scopus_num_intersections')
 
     # extractMetrics.get_correlations_all_journals()
     # extractMetrics.run_small_and_large_cats(df1,df2)
-    # extractMetrics.prep_data_for_venn_plots(df1, sub_group_dict_wos,intersect_group_dict_wos, df2, sub_group_dict_scopus, intersect_group_dict_scopus)
+    extractMetrics.prep_data_for_venn_plots(df1, sub_group_dict_wos=None,intersect_group_dict_wos=None, scopus_df=df2, sub_group_dict_scopus=sub_group_dict_scopus, intersect_group_dict_scopus=intersect_group_dict_scopus)
 
     # journals_with_cats_metrics_wos = utils.load_obj("wos_journals_with_metrics")
     # categories_with_ranks_df=extractMetrics.create_journal_ranking_by_category_wos(df1,journals_with_cats_metrics_wos)
     # utils.save_obj(categories_with_ranks_df,'categories_with_ranks_df')
-    extractMetrics.get_categories_ranking_mismatch()
+    # extractMetrics.get_categories_ranking_mismatch()
 
+    # extractMetrics.create_clusters_by_categories()
 
