@@ -7,6 +7,7 @@ import pandas as pd
 import csv
 import os
 import pickle
+import numpy as np
 
 
 path='D:\\shir\\study\\bibliometrics\\journals'
@@ -22,11 +23,13 @@ vis=Visualization()
 # utils.save_obj(scopus_categories_and_journals_dict,"scopus_categories_and_journals_dict")
 
 wos_journals_dict = utils.load_obj("wos_journals_dict")
+scopus_journals_dict = utils.load_obj("scopus_journals_dict")
+
 
 scopus_categories_and_journals_dict=utils.load_obj("scopus_categories_and_journals_dict")
 df1 = utils.load_obj('wos_to_scopus_categories_for_group_mapping')
 df2 = utils.load_obj('scopus_to_wos_categories_for_group_mapping')
-pwj.split_categories_by_size(df1,0.9)
+# pwj.split_categories_by_size(df1,0.9)
 
 
 # all_wos_journals_to_scopus_categories_dict = pwj.get_scopus_categories_for_all_journals(df1)

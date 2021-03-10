@@ -20,9 +20,13 @@ class CoverSet:
         # universe['Journal title']=universe.apply(lambda row: pd.Series(row['Journal title'].lower()), axis=1)
         cover=set()
         while not len(universe)==0:
-            current_cat_name = sorted_cats.pop()
-            current_journals = cats_dict[current_cat_name]
-            current_journals=set(list(map(lambda x: x.values[0], current_journals)))
+            if len(sorted_cats)>0:
+                current_cat_name = sorted_cats.pop()
+            else:
+                cover.clear();
+                break;
+            current_journals = set(cats_dict[current_cat_name]['Journal title'].values)
+            # current_journals=set(list(map(lambda x: x.values[0], current_journals)))
             # current_cat=cats_dict.pop()
             current_universe = universe-current_journals
             if len(current_universe)<len(universe):
@@ -131,6 +135,33 @@ class CoverSet:
             for journal_name in val:
                 i=journals[journals['Journal title'] == journal_name].index[0]
                 arr[i,j]=1
+        return arr
+
+    def build_array_intra(self, df_cat=0.0, journals=None, cats_dict=None, from_scopus=False):
+        if not isinstance(df_cat,float):
+            # if not from_scopus:
+            #     cats_dict = df_cat['scopus_categories']
+            # else:
+            #     cats_dict = df_cat['wos_categories']
+            if isinstance(cats_dict, float):
+                return
+            if from_scopus:
+                journals = pd.DataFrame(columns=['Journal title'])
+                journals['Journal title'] = df_cat['journals'].copy()
+            else:
+                journals = df_cat.copy()
+        journals.reset_index(drop=True, inplace=True)
+        num_journals=len(journals)
+        num_cats=len(cats_dict)
+        arr=np.zeros([num_journals, num_cats])
+        cats_names=list(cats_dict.keys())
+        for j, cat_name in enumerate(cats_names):
+            val=cats_dict[cat_name]
+            for journal_name in val['Journal title']:
+                journal_found = journals[journals['Journal title'] == journal_name]
+                if len(journal_found)>0:
+                    i= journal_found.index[0]
+                    arr[i,j]=1
         return arr
 
 
@@ -325,7 +356,7 @@ if __name__ == '__main__':
     print('All {} journals covered by {}. Number of categories {}. number of journals {}. Min cover set {}'.format('WOS','Scopus',all_wos['Num matching cats'],all_wos['Num journals'],all_wos['Min Cover set ILP']))
     print('All {} journals covered by {}. Number of categories {}. number of journals {}. Min cover set {}'.format('Scopus','WOS',all_scopus['Num matching cats'],all_scopus['Num journals'],all_scopus['Min Cover set ILP']))
 
-    vis.plt_coverset_size(df_cover_set_wos_to_scopus_full[0:-1], df_cover_set_scopus_to_wos_full[0:-1],'Cover set size by Number of journals', 'Cover set size by Number of corresponding categories', extract_low=20)
+    vis.plt_coverset_size(df_cover_set_wos_to_scopus_full[0:-1], df_cover_set_scopus_to_wos_full[0:-1], label1='Scopus categories min \n cover set of WOS categories',label2='WOS categories min \n cover set of Scopus categories', title1='Cover set size by Number of journals', title2='Cover set size by Number of corresponding categories', extract_low=20)
 
 
     # record=cs.run_cover_set_no_cat_scopus()
