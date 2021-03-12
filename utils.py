@@ -12,11 +12,12 @@ from pybliometrics.scopus import ScopusSearch
 
 
 class Utils():
-    def __init__(self,path):
-        self.path=path
-        # con_file = open("config.json")
-        # config = json.load(con_file)
-        # con_file.close()
+    def __init__(self):
+
+        con_file = open("conf.json")
+        config = json.load(con_file)
+        con_file.close()
+        self.path = config['path']
 
         ## Initialize client
         # self.client = ElsClient(config['apikey'])

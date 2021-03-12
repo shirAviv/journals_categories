@@ -6,13 +6,13 @@ import pandas as pd
 from utils import Utils
 from datetime import date,datetime,timedelta
 from visualization import Visualization
+import json
 
 
-
-
-path='D:\\shir\\study\\bibliometrics\\journals'
 
 class CoverSet:
+    def __init__(self,path):
+        self.path=path
 
     def cover_set_greedy(self,journals, cats_dict ):
         sorted_cats = sorted(cats_dict, key=lambda k: len(cats_dict[k]))

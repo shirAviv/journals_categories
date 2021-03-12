@@ -7,9 +7,6 @@ from itertools import chain,combinations
 # from process_wos_journals_list import ProcessWOSJournals
 
 
-
-path='D:\\shir\\study\\bibliometrics\\journals'
-
 class ProcessScopusJournals:
     def get_scopus_categories_and_journals(self, cat_file, journals_file,utils):
         categories = utils.load_csv_data_to_df(cat_file)
@@ -233,7 +230,7 @@ class ProcessScopusJournals:
 if __name__ == '__main__':
     start_time = datetime.now()
     print(start_time)
-    utils=Utils(path=path)
+    utils=Utils()
     psj=ProcessScopusJournals()
     # pwj=ProcessWOSJournals()
     vis=Visualization()

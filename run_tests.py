@@ -6,9 +6,6 @@ from process_scopus_journals_list import ProcessScopusJournals
 
 
 
-path='D:\\shir\\study\\bibliometrics\\journals'
-
-
 class RunTests:
 
     def create_mapping(self):
@@ -35,7 +32,7 @@ class RunTests:
 if __name__ == '__main__':
     start_time = datetime.now()
     print(start_time)
-    utils=Utils(path=path)
+    utils=Utils()
     psj=ProcessScopusJournals()
     pwj=ProcessWOSJournals()
     vis=Visualization()

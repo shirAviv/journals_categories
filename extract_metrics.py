@@ -4,12 +4,11 @@ from datetime import datetime
 from visualization import Visualization
 from cover_set import CoverSet
 
-path='D:\\shir\\study\\Bibliometrics\\journals'
 
 if __name__ == '__main__':
     start_time = datetime.now()
     print(start_time)
-    utils=Utils(path=path)
+    utils=Utils()
     vis=Visualization()
     cover_set=CoverSet();
     extractMetricsIntra= ExtractMetricsIntra()

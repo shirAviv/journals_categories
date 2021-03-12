@@ -10,12 +10,12 @@ import pickle
 import numpy as np
 
 
-path='D:\\shir\\study\\bibliometrics\\journals'
+path='C:\\shir\\study\\bibliometrics\\journals'
 
-utils=Utils(path=path)
+utils=Utils()
 pwj=ProcessWOSJournals()
 psj=ProcessScopusJournals()
-cs=CoverSet()
+cs=CoverSet(path=utils.path)
 vis=Visualization()
 # wos_categories_dict, wos_df=pwj.get_wos_categories_and_journals('wos_categories.csv', 'wos-core_SCIE.csv', 'wos-core_SSCI.csv', 'wos-core_AHCI.csv', utils)
 #scopus_categories, scopus_df=pwj.get_scopus_categories_and_journals('scopus_categories_full.csv', 'scopus_full_2020.csv', utils)
@@ -52,7 +52,7 @@ for k,v in jl1.items():
             js1.update(list(i))
             tmp_dict[cat_name].update(list(i))
 js1=sorted(list(js1))
-file_path = os.path.join(path, 'wos_cats_journals.csv')
+file_path = os.path.join(utils.path, 'wos_cats_journals.csv')
 # with open(file_path, 'w', encoding="utf8") as csvfile:
 #     for key in tmp_dict.keys():
 #         csvfile.write("%s,%s\n"%(key,tmp_dict[key]))
@@ -77,7 +77,7 @@ for k,v in dict2.items():
     js2.update(list(v['journal name']))
     tmp_dict[cat_name].update(jn)
 js2=sorted(list(js2))
-file_path = os.path.join(path, 'scopus_cats_journals.csv')
+file_path = os.path.join(utils.path, 'scopus_cats_journals.csv')
 # with open(file_path, 'w', encoding="utf8") as csvfile:
 #     for key in tmp_dict.keys():
 #         csvfile.write("%s,%s\n"%(key,tmp_dict[key]))

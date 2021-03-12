@@ -8,12 +8,9 @@ from process_scopus_journals_list import ProcessScopusJournals
 import pickle
 
 
-path='D:\\shir\\study\\Bibliometrics\\journals'
 
 class ProcessWOSJournals:
 
-    # def __init__(self):
-        # self.utils=Utils(path)
 
     def get_wos_categories_and_journals(self, cat_file, journals_file_SCIE,journals_file_SSCI,journals_file_AHCI, utils=None):
         categories = utils.load_csv_data_to_df(cat_file)
@@ -343,7 +340,7 @@ class ProcessWOSJournals:
 if __name__ == '__main__':
     start_time = datetime.now()
     print(start_time)
-    utils=Utils(path=path)
+    utils=Utils()
     pwj=ProcessWOSJournals()
     vis=Visualization()
     psj=ProcessScopusJournals()
