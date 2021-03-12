@@ -10,7 +10,7 @@ if __name__ == '__main__':
     print(start_time)
     utils=Utils()
     vis=Visualization()
-    cover_set=CoverSet();
+    cover_set=CoverSet(path=utils.path);
     extractMetricsIntra= ExtractMetricsIntra()
     extractMetricsIntra.utils=utils
     extractMetricsIntra.vis=vis
