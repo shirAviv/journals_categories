@@ -943,3 +943,13 @@ class ExtractMetricsIntra:
         scopus_coverset_max_cover = scopus_coverset['Min Cover set ILP'].values.max()
         self.vis.plt_coverset_size(wos_coverset, scopus_coverset, label1='WOS', label2='Scopus', title1="Minimal cover size by number of journals", title2= "Minimal cover size by bumber of categories")
         print(wos_coverset)
+
+    def prep_data_for_graph(self, dict):
+        graph_df=pd.DataFrame(columns=['category','intersecting category','num journals in intersect'])
+        for cat_name, item in dict.items():
+            for idx,intersect_cat in item.iterrows():
+                name_intersect_cat=intersect_cat['category']
+                num_journals=len(intersect_cat['journals'])
+                record={'category':cat_name, 'intersecting category': name_intersect_cat,'num journals in intersect': num_journals}
+                graph_df=graph_df.append(record, ignore_index=True)
+        return graph_df

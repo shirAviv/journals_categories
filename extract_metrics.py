@@ -30,10 +30,11 @@ if __name__ == '__main__':
     # utils.save_obj(intersect_group_dict_scopus, 'scopus_intersect_group_dict')
 
     intersect_group_dict_scopus=utils.load_obj('scopus_intersect_group_dict')
+    df_graph=extractMetricsIntra.prep_data_for_graph(intersect_group_dict_scopus)
     sub_group_dict_scopus=utils.load_obj('scopus_sub_group')
     # extractMetricsIntra.get_correlations_all_journals()
     # extractMetricsIntra.run_small_and_large_cats(df1,df2)
-    extractMetricsIntra.prep_data_for_venn_plots(df1, sub_group_dict_wos=None,intersect_group_dict_wos=None, scopus_df=df2, sub_group_dict_scopus=sub_group_dict_scopus, intersect_group_dict_scopus=intersect_group_dict_scopus)
+    # extractMetricsIntra.prep_data_for_venn_plots(df1, sub_group_dict_wos=None,intersect_group_dict_wos=None, scopus_df=df2, sub_group_dict_scopus=sub_group_dict_scopus, intersect_group_dict_scopus=intersect_group_dict_scopus)
 
     # extractMetricsIntra.create_journal_ranking_by_category(df1, df2.T)
 
