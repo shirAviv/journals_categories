@@ -324,7 +324,7 @@ class CoverSet:
 
 if __name__ == '__main__':
     cs=CoverSet()
-    utils=Utils(path=path)
+    utils=Utils()
     vis=Visualization()
 
     df=cs.run_cover_set_per_category_wos()
