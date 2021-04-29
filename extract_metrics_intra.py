@@ -6,14 +6,13 @@ from scipy import stats
 from utils import Utils
 from datetime import datetime
 from visualization import Visualization
+import networkx as nx
 
 
 
 class ExtractMetricsIntra:
-    def extract_wos_metrics(self, metrics_file):
-        metrics_df=self.utils.load_csv_data_to_df(metrics_file)
-        metrics_df['Full Journal Title']=metrics_df.apply(lambda row: pd.Series(row['Full Journal Title'].lower()), axis=1)
-        journals_dict = self.utils.load_obj("wos_journals_dict")
+    def extract_wos_metrics(self, metrics_df, journals_dict):
+
         count_missing = 0
         journals_with_cats_metrics=pd.DataFrame(columns={'Journal name', 'Scopus Journal name', 'num categories', 'Total Cites', 'JIF', '5 year JIF', 'Eigenfactor', 'Norm Eigenfactor'})
         for journal_name, item in journals_dict.items():
@@ -45,10 +44,8 @@ class ExtractMetricsIntra:
         print('missing {}'.format(count_missing))
         return journals_with_cats_metrics
 
-    def extract_scopus_metrics(self, metrics_file):
-        metrics_df=self.utils.load_csv_data_to_df(metrics_file, delimiter=';')
-        metrics_df['Title']=metrics_df.apply(lambda row: pd.Series(row['Title'].lower()), axis=1)
-        journals_dict = self.utils.load_obj("scopus_journals_dict")
+    def extract_scopus_metrics(self, metrics_df, journals_dict):
+
         count_missing = 0
         journals_with_cats_metrics = pd.DataFrame(
             columns={'Journal name', 'num categories', 'Total Cites', 'Total Refs', 'SJR', 'H index', 'Categories Q',
@@ -146,20 +143,6 @@ class ExtractMetricsIntra:
         r, pValue = stats.pearsonr(df['num categories'].values, df['Total Refs'].values)
         print('Pearsons correlation categories and Total Refs: r {}. pValue {}'.format(r, pValue))
 
-    def get_inter_system_correlations(self,journals_with_cats_metrics_wos, journals_with_cats_metrics_scopus):
-        print('Calculating pearson correlation for Scopus and wos num categories')
-        # df = journals_with_cats_metrics[np.isnan(journals_with_cats_metrics['SJR']) == False]
-        r, pValue = stats.pearsonr(journals_with_cats_metrics_wos['num categories'].values, journals_with_cats_metrics_scopus['num categories'].values)
-        print('Pearsons correlation categories wos and scopus: r {}. pValue {}'.format(r, pValue))
-
-        print('Calculating wilcoxson rank test correlation for Scopus and wos num categories')
-        stat, pValue = stats.wilcoxon(journals_with_cats_metrics_wos['num categories'].values, journals_with_cats_metrics_scopus['num categories'].values)
-        print('Wilcoxson rank test - categories wos and scopus: stat {}. pValue {}'.format(stat, pValue))
-
-        print('Calculating paired t-test for Scopus and wos num categories')
-        stat, pValue = stats.ttest_rel(journals_with_cats_metrics_wos['num categories'].values,
-                                      journals_with_cats_metrics_scopus['num categories'].values)
-        print('t-test - categories wos and scopus: stat {}. pValue {}'.format(stat, pValue))
 
 
     def calc_correlations_gaps_in_percentiles_by_categories(self, journals_with_metrics, db, column):
@@ -403,7 +386,7 @@ class ExtractMetricsIntra:
     def get_large_categories(self,df, name):
         df['count journals'] = df.apply(lambda row: pd.Series(len(row['journals'])), axis=1)
         sorted_cats = df.sort_values(by='count journals')
-        large_cats = sorted_cats.loc[sorted_cats['count journals'] > 300, 'count journals']
+        large_cats = sorted_cats.loc[sorted_cats['count journals'] > 200, 'count journals']
         large_cats = large_cats.append(pd.Series(len(large_cats), index=[name]))
         print(large_cats)
         print('total {}'.format(len(large_cats)))
@@ -415,11 +398,11 @@ class ExtractMetricsIntra:
         x=0
         y=0
         for cat, item in dict.items():
-            if len(item)>1:
-                continue
-                num_journals_in_intersection1 = len(item[:1]['journals'].values[0])
-                num_journals_in_intersection2 = len(item[1:2]['journals'].values[0])
-                num_journals = num_journals_in_intersection1 / item[:1]['ratio'].values[0]-num_journals_in_intersection2
+            if len(item)>1 and len(item)<3:
+                # continue
+                num_journals_in_intersection1 = len(item[:1]['journals'].values[0]).__round__()
+                num_journals_in_intersection2 = len(item[1:2]['journals'].values[0]).__round__()
+                num_journals = (num_journals_in_intersection1 / item[:1]['ratio'].values[0]-num_journals_in_intersection2).__round__()
                 # num_journals2 = num_journals_in_intersection2 / item[1]['ratio'].values[0]-num_journals_in_intersection1
                 subsets = (num_journals, 0, num_journals_in_intersection2, 0,num_journals_in_intersection1,0,0)
                 idx = cat.find(' ', cat.find(' ') + 1)
@@ -435,12 +418,12 @@ class ExtractMetricsIntra:
                 if idx > -1:
                     third_cat = third_cat[:idx] + '\n' + third_cat[idx + 1:]
                 labels = (cat_name, second_cat , third_cat )
-                self.vis.create_venn_diagrams(subsets, labels, ax[y], True)
+                self.vis.create_venn_diagrams(subsets, labels, ax[x][y], True)
                 y += 1
             if len(item)==1:
                 # continue;
-                num_journals_in_intersection = len(item['journals'].values[0])
-                num_journals= num_journals_in_intersection / item['ratio'].values[0]
+                num_journals_in_intersection = len(item['journals'].values[0]).__round__()
+                num_journals= (num_journals_in_intersection / item['ratio'].values[0]).__round__()
                 subsets=(num_journals, 0, num_journals_in_intersection)
                 idx = cat.find(' ', cat.find(' ') + 1)
                 cat_name = cat
@@ -457,12 +440,12 @@ class ExtractMetricsIntra:
                 self.vis.create_venn_diagrams(subsets, labels, ax[x][y])
                 print(num_journals)
                 y+=1
-                if y==3:
+                if y==4:
                     x+=1
                     y=0
         self.vis.plt_show_and_title('')
 
-    def prep_data_for_venn_intersect(self,dict, threshold,df):
+    def prep_data_for_venn_intersect(self,dict, threshold,df_from, df_to):
         fig, ax = self.vis.get_subplots_for_venn()
         x = 0
         y = 0
@@ -471,16 +454,18 @@ class ExtractMetricsIntra:
                 continue
             if cat.startswith('Ling'):
                 continue
-            num_journals_in_cat=len(df[cat]['journals'])
+            num_journals_in_cat=len(df_from[cat]['journals'])
             records_above_threshold=item[item['ratio']>threshold]
             records_above_threshold=records_above_threshold[records_above_threshold['ratio']<(threshold+0.05)]
             if len(records_above_threshold)==0:
                 continue
+            else:
+                print(cat)
             for record in records_above_threshold.iterrows():
                 other_cat_name = record[1]['category']
                 num_journals_in_intersection = len(record[1]['journals'])
-                num_journals_in_other_cat = len(df[other_cat_name]['journals'])
-                subsets = (num_journals_in_cat, num_journals_in_other_cat, num_journals_in_intersection)
+                num_journals_in_other_cat = len(df_to[other_cat_name]['journals'])
+                subsets = (num_journals_in_cat-num_journals_in_intersection, num_journals_in_other_cat-num_journals_in_intersection, num_journals_in_intersection)
                 idx=cat.find(' ',cat.find(' ')+1)
                 cat_name = cat
                 if idx>-1:
@@ -489,9 +474,9 @@ class ExtractMetricsIntra:
                 if idx>-1:
                     other_cat_name = other_cat_name[:idx] + '\n' + other_cat_name[idx + 1:]
                 labels = (cat_name, other_cat_name)
-                self.vis.create_venn_diagrams(subsets, labels, ax[y])
-                print(cat)
-                print(other_cat_name)
+                self.vis.create_venn_diagrams(subsets, labels, ax[x][y])
+                # print(cat)
+                # print(other_cat_name)
                 y += 1
                 if y == 3:
                     x += 1
@@ -508,28 +493,28 @@ class ExtractMetricsIntra:
 
     def run_small_and_large_cats_scopus(self,df):
         name = 'Total_num_small_cats_scopus'
-        small_cats_scopus=self.get_small_categories(df.T, name)
+        small_cats_scopus=self.get_small_categories(df, name)
         name = 'Total_num_large_cats_scopus'
-        large_cats_scopus=self.get_large_categories(df.T, name)
+        large_cats_scopus=self.get_large_categories(df, name)
         return small_cats_scopus, large_cats_scopus
 
     def run_small_and_large_cats(self,wos_df, scopus_df):
         small_cats_wos, large_cats_wos=self.run_small_and_large_cats_wos(wos_df)
         small_cats_scopus, large_cats_scopus=self.run_small_and_large_cats_scopus(scopus_df)
         small_cats_wos=small_cats_wos.append(small_cats_scopus)
-        self.utils.save_obj(small_cats_wos,"inter_systems_small_categories")
-        self.utils.write_to_csv(small_cats_wos, 'inter_systems_small_categories.csv', index=True)
+        self.utils.save_obj(small_cats_wos,"intra_systems_small_categories")
+        self.utils.write_to_csv(small_cats_wos, 'intra_systems_small_categories.csv', index=True)
         large_cats_wos=large_cats_wos.append(large_cats_scopus)
-        self.utils.save_obj(large_cats_wos,"inter_systems_large_categories")
-        self.utils.write_to_csv(large_cats_wos,'inter_systems_large_categories.csv', index=True)
+        self.utils.save_obj(large_cats_wos,"intra_systems_large_categories")
+        self.utils.write_to_csv(large_cats_wos,'intra_systems_large_categories.csv', index=True)
 
     def prep_data_for_venn_plots(self,wos_df,sub_group_dict_wos, intersect_group_dict_wos, scopus_df, sub_group_dict_scopus,intersect_group_dict_scopus ):
         # extractMetrics.prep_data_for_venn_subset(sub_group_dict_wos)
-        # self.prep_data_for_venn_intersect(intersect_group_dict_wos, 0.85, wos_df.T)
+        self.prep_data_for_venn_intersect(intersect_group_dict_wos, 0.85, wos_df.T)
         # print('0.8')
         # extractMetrics.prep_data_for_venn_intersect(intersect_group_dict_wos, 0.8, wos_df.T)
 
-        self.prep_data_for_venn_subset(sub_group_dict_scopus)
+        # self.prep_data_for_venn_subset(sub_group_dict_scopus)
         # self.prep_data_for_venn_intersect(intersect_group_dict_scopus, 0.80, scopus_df)
 
     def plt_histograms_intersect(self):
@@ -544,23 +529,29 @@ class ExtractMetricsIntra:
         journals_with_cats_metrics_scopus = self.utils.load_obj("scopus_journals_with_metrics")
         self.vis.plt_histogram_cats(journals_with_cats_metrics_scopus, title="Scopus number of categories per journal distribution")
 
-    def create_journals_with_cats_metrics(self):
-        journals_with_cats_metrics_wos=self.extract_wos_metrics('wos_journals_metrics.csv')
-        self.utils.save_obj(journals_with_cats_metrics_wos,"wos_journals_with_metrics")
+    def create_journals_with_cats_metrics(self,metrics_file_wos, journals_dict_wos, metrics_file_scopus, journals_dict_scopus):
+        metrics_df = self.utils.load_csv_data_to_df(metrics_file_wos)
+        metrics_df['Full Journal Title'] = metrics_df.apply(lambda row: pd.Series(row['Full Journal Title'].lower()),
+                                                            axis=1)
+        journals_with_cats_metrics_wos=self.extract_wos_metrics(metrics_df, journals_dict_wos)
+        self.utils.save_obj(journals_with_cats_metrics_wos,"wos_journals_with_metrics_v3")
 
-        journals_with_cats_metrics_scopus=self.extract_scopus_metrics('scopus_scores_2019.csv')
-        self.utils.save_obj(journals_with_cats_metrics_scopus, "scopus_journals_with_metrics")
+        metrics_df = self.utils.load_csv_data_to_df(metrics_file_scopus, delimiter=';')
+        metrics_df['Title'] = metrics_df.apply(lambda row: pd.Series(row['Title'].lower()), axis=1)
+
+        journals_with_cats_metrics_scopus=self.extract_scopus_metrics(metrics_df,journals_dict_scopus)
+        self.utils.save_obj(journals_with_cats_metrics_scopus, "scopus_journals_with_metrics_v2")
 
         journals_with_cats_metrics_wos, journals_with_cats_metrics_scopus= self.find_missing_journals_dont_use(journals_with_cats_metrics_wos, journals_with_cats_metrics_scopus)
-        self.utils.save_obj(journals_with_cats_metrics_wos,"wos_journals_with_metrics")
-        self.utils.save_obj(journals_with_cats_metrics_scopus, "scopus_journals_with_metrics")
+        self.utils.save_obj(journals_with_cats_metrics_wos,"wos_journals_with_metrics_v3")
+        self.utils.save_obj(journals_with_cats_metrics_scopus, "scopus_journals_with_metrics_v2")
 
     def get_correlations_all_journals(self):
         journals_with_cats_metrics_wos = self.utils.load_obj("wos_journals_with_metrics")
         journals_with_cats_metrics_scopus = self.utils.load_obj("scopus_journals_with_metrics")
         self.get_wos_correlations(journals_with_cats_metrics_wos)
         self.get_scopus_correlations(journals_with_cats_metrics_scopus)
-        self.get_inter_system_correlations(journals_with_cats_metrics_wos, journals_with_cats_metrics_scopus)
+        # self.get_inter_system_correlations(journals_with_cats_metrics_wos, journals_with_cats_metrics_scopus)
 
 
     def create_journal_ranking_by_category_wos(self,df, journals_with_metrics):
@@ -831,20 +822,20 @@ class ExtractMetricsIntra:
                 journals = journals.union(set(df.T[cat]['journals']))
         return journals
 
-    def calc_mean_sd(self):
-        df = self.utils.load_obj('wos_to_scopus_categories_for_group_mapping')
-        df['count journals'] = df.apply(lambda row: pd.Series(len(row['journals'])), axis=1)
-        total=df['count journals'].sum()
-        mean=df['count journals'].mean()
-        median=df['count journals'].median()
-        std=df['count journals'].std()
+    def calc_mean_sd(self, df_wos, df_scopus):
+        # df = self.utils.load_obj('wos_to_scopus_categories_for_group_mapping_v3')
+        df_wos['count journals_in_cat'] = df_wos.apply(lambda row: pd.Series(len(row['journals'])), axis=1)
+        total=df_wos['count journals_in_cat'].sum()
+        mean=df_wos['count journals_in_cat'].mean()
+        median=df_wos['count journals_in_cat'].median()
+        std=df_wos['count journals_in_cat'].std()
         print('WOS number of journals per category - median {}, mean {}, sd {}, total {}.'.format(median,mean,std,total))
-        df = (self.utils.load_obj('scopus_to_wos_categories_for_group_mapping')).T
-        df['count journals'] = df.apply(lambda row: pd.Series(len(row['journals'])), axis=1)
-        total = df['count journals'].sum()
-        mean = df['count journals'].mean()
-        median = df['count journals'].median()
-        std = df['count journals'].std()
+        # df = (self.utils.load_obj('scopus_to_wos_categories_for_group_mapping_v2'))
+        df_scopus['count journals_in_cat'] = df_scopus.apply(lambda row: pd.Series(len(row['journals'])), axis=1)
+        total = df_scopus['count journals_in_cat'].sum()
+        mean = df_scopus['count journals_in_cat'].mean()
+        median = df_scopus['count journals_in_cat'].median()
+        std = df_scopus['count journals_in_cat'].std()
         print('Scopus number of journals per category - median {}, mean {}, sd {}, total {}.'.format(median,mean, std, total))
 
 
@@ -945,11 +936,33 @@ class ExtractMetricsIntra:
         print(wos_coverset)
 
     def prep_data_for_graph(self, dict):
+        df=self.utils.load_obj("scopus_to_wos_categories_for_group_mapping")
+        d = pd.DataFrame(0, index=list(dict.keys()),
+                         columns=list(dict.keys()))
         graph_df=pd.DataFrame(columns=['category','intersecting category','num journals in intersect'])
         for cat_name, item in dict.items():
-            for idx,intersect_cat in item.iterrows():
-                name_intersect_cat=intersect_cat['category']
-                num_journals=len(intersect_cat['journals'])
+            d.loc[cat_name,cat_name]= len(df[cat_name]['journals'])
+            for intersect_cat in item.iterrows():
+                name_intersect_cat=intersect_cat[1]['category']
+                ratio=intersect_cat[1]['ratio']
+                num_journals = len(intersect_cat[1]['journals'])
+                if (ratio > 0.1):
+                    d.loc[cat_name, name_intersect_cat] = num_journals
+
+                if not name_intersect_cat in dict.keys():
+                    print('name mismatch. in cat {} can not find cat {}'.format(cat_name,name_intersect_cat))
+
                 record={'category':cat_name, 'intersecting category': name_intersect_cat,'num journals in intersect': num_journals}
                 graph_df=graph_df.append(record, ignore_index=True)
-        return graph_df
+        print(graph_df.nunique())
+        return graph_df, d
+
+    def generate_graph(self,df):
+        for cat,row in df.iterrows():
+            df.loc[cat,cat]=0
+
+        # df1=df[['category','intersecting category']]
+        G = nx.Graph()
+        G=nx.from_pandas_adjacency(df)
+        # G = nx.from_pandas_edgelist(df1, 'category', 'intersecting category')
+        self.vis.show_graph(G, nx)

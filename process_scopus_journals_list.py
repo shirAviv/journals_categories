@@ -86,6 +86,10 @@ class ProcessScopusJournals:
                     print('missing subject name for code 3330 in scopus')
                     continue
                 cond = scopus_categories['Code'] == subject_code.strip()
+                if len(scopus_categories.loc[cond, 'Field']) == 0:
+                    print(journal_name)
+                    print(subject_code)
+                    continue
                 subject_name=scopus_categories.loc[cond,'Field'].iloc[0]
                 scopus_matched_categories=scopus_categories_dict
                 if not subject_name in scopus_categories_dict:
@@ -244,15 +248,16 @@ if __name__ == '__main__':
     # utils.save_obj(scopus_journals_dict, "scopus_journals_dict")
     # utils.save_obj(scopus_categories_and_journals_dict,"scopus_categories_and_journals_dict")
     # exit(0)
-    wos_df=utils.load_obj('wos_df_no_dupes')
-    scopus_categories_and_journals_dict=utils.load_obj("scopus_categories_and_journals_dict")
-    scopus_full_mapping = psj.match_categories_from_scopus(scopus_categories_and_journals_dict,wos_df=wos_df)
+    # wos_df=utils.load_obj('wos_df_no_dupes')
+    # scopus_categories_and_journals_dict=utils.load_obj("scopus_categories_and_journals_dict")
+    # scopus_full_mapping = psj.match_categories_from_scopus(scopus_categories_and_journals_dict,wos_df=wos_df)
     # print(scopus_categories_and_journals_dict)
-    utils.save_obj(scopus_full_mapping,'scopus_to_wos_categories_for_group_mapping')
-    exit(0)
+    # utils.save_obj(scopus_full_mapping,'scopus_to_wos_categories_for_group_mapping')
+    # exit(0)
     df=utils.load_obj('scopus_to_wos_categories_for_group_mapping')
     all_scopus_journals_to_wos_categories_dict=psj.get_wos_categories_for_all_journals(df.T)
     utils.save_obj(all_scopus_journals_to_wos_categories_dict, 'no_cat_scopus_to_wos_categories_for_group_mapping')
+    exit(0)
     # pwj.run_groups_for_all_wos_journals()
     # mapping=psj.categories_mapping(df.T)
     # utils.save_obj(mapping,'scopus_to_wos_categories_mapping')

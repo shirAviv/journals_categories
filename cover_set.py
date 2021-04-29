@@ -14,25 +14,43 @@ class CoverSet:
     def __init__(self,path):
         self.path=path
 
-    def cover_set_greedy(self,journals, cats_dict ):
+    def cover_set_greedy(self,journals_set, cats_dict, threshold=1, ret_journals_not_covered=False ):
         sorted_cats = sorted(cats_dict, key=lambda k: len(cats_dict[k]))
-        universe=set(journals)
+        universe=journals_set
+        if '' in universe:
+            universe.remove('')
         # universe['Journal title']=universe.apply(lambda row: pd.Series(row['Journal title'].lower()), axis=1)
         cover=set()
-        while not len(universe)==0:
+        reached_threshold=False
+        while not reached_threshold:
+            # if threshold==1 and len(universe)==0:
+            #     reached_threshold=True
+            #     break
+            if 1-(len(universe)/len(journals_set))>=threshold:
+                reached_threshold=True
+                break
             if len(sorted_cats)>0:
                 current_cat_name = sorted_cats.pop()
             else:
-                cover.clear();
-                break;
-            current_journals = set(cats_dict[current_cat_name]['Journal title'].values)
+                cover.clear()
+                break
+            if isinstance(cats_dict[current_cat_name], list):
+                current_journals = set(cats_dict[current_cat_name])
+            else:
+                if isinstance(cats_dict[current_cat_name],set):
+                    current_journals=cats_dict[current_cat_name]
+                else:
+                    current_journals = set(cats_dict[current_cat_name]['Journal title'].values)
             # current_journals=set(list(map(lambda x: x.values[0], current_journals)))
             # current_cat=cats_dict.pop()
             current_universe = universe-current_journals
             if len(current_universe)<len(universe):
                 cover.add(current_cat_name)
                 universe=current_universe
-        return cover
+        if ret_journals_not_covered:
+            return cover,universe
+        else:
+            return cover
 
     def calc_cover_set_ILP_pulp(self):
         model=pulp.LpProblem("minimal_set_cover", pulp.LpMinimize)
@@ -133,7 +151,10 @@ class CoverSet:
         for j, cat_name in enumerate(cats_names):
             val=cats_dict[cat_name]
             for journal_name in val:
-                i=journals[journals['Journal title'] == journal_name].index[0]
+                if from_scopus:
+                    i=journals[journals['Journal title'] == journal_name].index[0]
+                else:
+                    i = journals[journals['Scopus Journal title'] == journal_name].index[0]
                 arr[i,j]=1
         return arr
 
@@ -226,8 +247,7 @@ class CoverSet:
         #     num=num[0]
         return ('x' + ''.join(str(num)))
 
-    def run_cover_set_per_category_wos(self):
-        df = utils.load_obj('wos_to_scopus_categories_for_group_mapping')
+    def run_cover_set_per_category_wos(self, df):
         df_results = pd.DataFrame(
             columns=['Category', 'Num journals', 'Num matching cats', 'Min cover set Greedy', 'Min Cover set ILP'])
         for wos_category, row in df.iterrows():
@@ -235,45 +255,55 @@ class CoverSet:
             if isinstance(sco_cats_dict, float):
                 print('skipping cat {}'.format(wos_category))
                 continue
-            journals = list(row['journals']['Journal title'])
-            cover_set_greedy = cs.cover_set_greedy(journals=journals, cats_dict=sco_cats_dict)
+            journals = set(row['journals']['Scopus Journal title'])
+            if '' in journals:
+                journals.remove('')
+            cover_set_greedy = self.cover_set_greedy(journals_set=journals, cats_dict=sco_cats_dict, threshold=1)
             greedy_cover_set_size = len(cover_set_greedy)
+            cover_set_greedy_95 = self.cover_set_greedy(journals_set=journals, cats_dict=sco_cats_dict, threshold=0.95)
+            greedy_cover_set_size_95 = len(cover_set_greedy_95)
+            cover_set_greedy_90 = self.cover_set_greedy(journals_set=journals, cats_dict=sco_cats_dict, threshold=0.9)
+            greedy_cover_set_size_90 = len(cover_set_greedy_90)
             # if wos_category=='Ergonomics':
-            const_arr = cs.build_array(row)
-            ilp_model = cs.build_model(const_arr)
-            status, objective = cs.run_model(ilp_model)
+            const_arr = self.build_array(row)
+            ilp_model = self.build_model(const_arr)
+            status, objective = self.run_model(ilp_model)
             print('Cat {}, status {}, objective {}'.format(wos_category, status, objective))
             record = {'Category': wos_category, 'Num journals': len(journals), 'Num matching cats': len(sco_cats_dict),
-                      'Min cover set Greedy': greedy_cover_set_size, 'Min Cover set ILP': int(objective)}
+                      'Min cover set Greedy': greedy_cover_set_size, 'Min Cover set ILP': int(objective), 'Min cover set Greedy 95': greedy_cover_set_size_95,'Min cover set Greedy 90': greedy_cover_set_size_90}
             df_results=df_results.append(record, ignore_index=True)
         return df_results
 
-    def run_cover_set_no_cat_wos(self, utils=None):
-        sco_cats_dict = utils.load_obj('no_cat_wos_to_scopus_categories_for_group_mapping')
+    def run_cover_set_no_cat_wos(self, sco_cats_dict, utils=None):
         journals_set=set()
         for k,v in sco_cats_dict.items():
             journals_set.update(v)
-        df_results = pd.DataFrame(
-            columns=['Category', 'Num journals', 'Num matching cats', 'Min cover set Greedy', 'Min Cover set ILP'])
+        # df_results = pd.DataFrame(
+        #     columns=['Category', 'Num journals', 'Num matching cats', 'Min cover set Greedy', 'Min Cover set ILP'])
         journals_df=pd.DataFrame(columns=['Journal title'])
-        journals_df['Journal title']=list(journals_set)
+        journals_df['Scopus Journal title']=list(journals_set)
         start_time = datetime.now()
-        cover_set_greedy = cs.cover_set_greedy(journals=journals_df, cats_dict=sco_cats_dict)
-        end_time = datetime.now()
-        print(end_time - start_time)
+        cover_set_greedy = self.cover_set_greedy(journals_set=journals_set, cats_dict=sco_cats_dict)
+        # end_time = datetime.now()
+        # print(end_time - start_time)
         greedy_cover_set_size = len(cover_set_greedy)
-        const_arr = cs.build_array(journals=journals_df, cats_dict= sco_cats_dict)
-        ilp_model = cs.build_model(const_arr)
-        status, objective = cs.run_model(ilp_model)
+        cover_set_greedy_95 = self.cover_set_greedy(journals_set=journals_set, cats_dict=sco_cats_dict, threshold=0.95)
+        greedy_cover_set_size_95 = len(cover_set_greedy_95)
+        cover_set_greedy_90 = self.cover_set_greedy(journals_set=journals_set, cats_dict=sco_cats_dict, threshold=0.9)
+        greedy_cover_set_size_90 = len(cover_set_greedy_90)
+        const_arr = self.build_array(journals=journals_df, cats_dict= sco_cats_dict,)
+        ilp_model = self.build_model(const_arr)
+        status, objective = self.run_model(ilp_model)
         print('All journals, all categories, status {}, objective {}'.format(status, objective))
-        record = {'Category': 'All', 'Num journals': len(journals_set), 'Num matching cats': len(sco_cats_dict),
-                  'Min cover set Greedy': greedy_cover_set_size, 'Min Cover set ILP': int(objective)}
+
+        record = {'Category': 'All_WOS', 'Num journals': len(journals_set), 'Num matching cats': len(sco_cats_dict),
+                  'Min cover set Greedy': greedy_cover_set_size, 'Min Cover set ILP': int(objective),
+                  'Min cover set Greedy 95': greedy_cover_set_size_95,
+                  'Min cover set Greedy 90': greedy_cover_set_size_90}
         return record
 
 
-    def run_cover_set_per_category_scopus(self):
-        df = utils.load_obj('scopus_to_wos_categories_for_group_mapping')
-        df=df.T
+    def run_cover_set_per_category_scopus(self, df):
         df_results = pd.DataFrame(
             columns=['Category', 'Num journals', 'Num matching cats', 'Min cover set Greedy', 'Min Cover set ILP'])
         for scopus_category, row in df.iterrows():
@@ -281,44 +311,62 @@ class CoverSet:
             if isinstance(wos_cats_dict, float):
                 print('skipping cat {}'.format(scopus_category))
                 continue
-            journals=pd.DataFrame(columns=['Journal title'])
-            journals['Journal title'] = row['journals']
-            cover_set_greedy = cs.cover_set_greedy(journals=journals, cats_dict=wos_cats_dict)
+            # journals=pd.DataFrame(columns=['Journal title'])
+            # journals['Journal title'] = row['journals']
+            journals=set(row['journals'])
+            cover_set_greedy = self.cover_set_greedy(journals_set=journals, cats_dict=wos_cats_dict)
             greedy_cover_set_size = len(cover_set_greedy)
+            cover_set_greedy_95 = self.cover_set_greedy(journals_set=journals, cats_dict=wos_cats_dict, threshold=0.95)
+            greedy_cover_set_size_95 = len(cover_set_greedy_95)
+            cover_set_greedy_90 = self.cover_set_greedy(journals_set=journals, cats_dict=wos_cats_dict, threshold=0.9)
+            greedy_cover_set_size_90 = len(cover_set_greedy_90)
+
             # if scopus_category=='Ergonomics':
-            const_arr = cs.build_array(row, from_scopus=True)
-            ilp_model = cs.build_model(const_arr)
-            status, objective = cs.run_model(ilp_model)
+            const_arr = self.build_array(row, from_scopus=True)
+            ilp_model = self.build_model(const_arr)
+            status, objective = self.run_model(ilp_model)
             print('Cat {}, status {}, objective {}'.format(scopus_category, status, objective))
             # objective=1
             record = {'Category': scopus_category, 'Num journals': len(journals), 'Num matching cats': len(wos_cats_dict),
-                      'Min cover set Greedy': greedy_cover_set_size, 'Min Cover set ILP': int(objective)}
+                      'Min cover set Greedy': greedy_cover_set_size,
+                      'Min Cover set ILP': int(objective),
+                      'Min cover set Greedy 95': greedy_cover_set_size_95,
+                      'Min cover set Greedy 90': greedy_cover_set_size_90}
+
             df_results=df_results.append(record, ignore_index=True)
         return df_results
 
-    def run_cover_set_no_cat_scopus(self, utils=None):
-        cats_dict = utils.load_obj('no_cat_scopus_to_wos_categories_for_group_mapping')
+    def run_cover_set_no_cat_scopus(self, cats_dict, utils=None):
         journals_set=set()
         for k,v in cats_dict.items():
             journals_set.update(v)
         count=0
         for k,v in cats_dict.items():
             count+=len(v)
-        df_results = pd.DataFrame(
-            columns=['Category', 'Num journals', 'Num matching cats', 'Min cover set Greedy', 'Min Cover set ILP'])
+        # df_results = pd.DataFrame(
+        #     columns=['Category', 'Num journals', 'Num matching cats', 'Min cover set Greedy', 'Min Cover set ILP'])
         journals_df=pd.DataFrame(columns=['Journal title'])
         journals_df['Journal title']=list(journals_set)
         start_time = datetime.now()
-        cover_set_greedy = cs.cover_set_greedy(journals=journals_df, cats_dict=cats_dict)
-        end_time = datetime.now()
-        print(end_time - start_time)
+        cover_set_greedy = self.cover_set_greedy(journals_set=journals_set, cats_dict=cats_dict)
+        # end_time = datetime.now()
+        # print(end_time - start_time)
         greedy_cover_set_size = len(cover_set_greedy)
-        const_arr = cs.build_array(journals=journals_df, cats_dict= cats_dict)
-        ilp_model = cs.build_model(const_arr)
-        status, objective = cs.run_model(ilp_model)
+        cover_set_greedy_95 = self.cover_set_greedy(journals_set=journals_set, cats_dict=cats_dict, threshold=0.95)
+        greedy_cover_set_size_95 = len(cover_set_greedy_95)
+        cover_set_greedy_90 = self.cover_set_greedy(journals_set=journals_set, cats_dict=cats_dict, threshold=0.9)
+        greedy_cover_set_size_90 = len(cover_set_greedy_90)
+        const_arr = self.build_array(journals=journals_df, cats_dict= cats_dict, from_scopus=True)
+        ilp_model = self.build_model(const_arr)
+        status, objective = self.run_model(ilp_model)
         print('All journals, all categories, status {}, objective {}'.format(status, objective))
-        record = {'Category': 'All', 'Num journals': len(journals_set), 'Num matching cats': len(cats_dict),
-                  'Min cover set Greedy': greedy_cover_set_size, 'Min Cover set ILP': int(objective)}
+
+        record = {'Category': 'All_Scopus', 'Num journals': len(journals_set), 'Num matching cats': len(cats_dict),
+                  'Min cover set Greedy': greedy_cover_set_size,
+                  'Min Cover set ILP': int(objective),
+                  'Min cover set Greedy 95': greedy_cover_set_size_95,
+                  'Min cover set Greedy 90': greedy_cover_set_size_90}
+
         return record
 
 
@@ -327,7 +375,8 @@ if __name__ == '__main__':
     cs=CoverSet(path=utils.path)
     vis=Visualization()
 
-    df=cs.run_cover_set_per_category_wos()
+    df_wos = utils.load_obj('wos_to_scopus_categories_for_group_mapping')
+    df=cs.run_cover_set_per_category_wos(df_wos)
     utils.save_obj(df,'cover_set_wos_to_scopus')
     exit(0)
     df=utils.load_obj('cover_set_wos_to_scopus')

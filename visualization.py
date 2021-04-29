@@ -151,24 +151,43 @@ class Visualization():
         if three:
             v=venn3(subsets=subsets, set_labels = ('Group A', 'Group B', 'Group C'), set_colors=('purple', 'skyblue', 'green'), alpha=0.7, ax=ax)
             v.get_label_by_id('A').set_text(labels[0])
+            pos = v.get_label_by_id('A').get_position()
+            # v.get_patch_by_id('A')
+            fix_y = pos[1]+1.2
+            fix_x=pos[0]-0.2
+            pos_new = (fix_x, fix_y)
+            v.get_label_by_id('A').set_position(pos_new)
             v.get_label_by_id('B').set_text(labels[1])
+            pos = v.get_label_by_id('B').get_position()
+            fix_y = pos[1]
+            fix_x=pos[0]+0.2
+            pos_new = (fix_x, fix_y)
+            v.get_label_by_id('B').set_position(pos_new)
+
+            pos=v.subset_labels[0].get_position()
+            fix_y = pos[1] + 0.3
+            fix_x = pos[0]
+            pos_new = (fix_x, fix_y)
+            v.subset_labels[0].set_position(pos_new)
+
             v.get_label_by_id('C').set_text(labels[2])
             pos=v.get_label_by_id('C').get_position()
-            fix_y=pos[1]+0.52
-            pos_new=(pos[0],fix_y)
+            fix_y=pos[1]-0.2
+            fix_x=pos[0]+0.3
+            pos_new=(fix_x,fix_y)
             v.get_label_by_id('C').set_position(pos_new)
         else:
             v=venn2(subsets=subsets, set_labels = ('Group A', 'Group B'), set_colors=('purple', 'skyblue'), alpha=0.7, ax=ax)
             v.get_label_by_id('A').set_text(labels[0])
             v.get_label_by_id('B').set_text(labels[1])
             pos = v.get_label_by_id('A').get_position()
-            fix_x=pos[0]
-            fix_y = pos[1] + 1.3
+            fix_x=pos[0]+0.4
+            fix_y = pos[1] + 1.1
             pos_new = (fix_x, fix_y)
             v.get_label_by_id('A').set_position(pos_new)
             pos = v.get_label_by_id('B').get_position()
-            fix_x = pos[0] - 0.2
-            fix_y = pos[1] -0.1
+            fix_x = pos[0] -0.3
+            fix_y = pos[1]+0.1
             pos_new = (fix_x, fix_y)
             v.get_label_by_id('B').set_position(pos_new)
 
@@ -231,6 +250,22 @@ class Visualization():
             axis.scatter( groups.index, groups.values, label=label)
         axis.set_ylabel(ylabel)
 
+    def plot_cover_set_inter(self, df, title):
+        df.groupby('Min cover set Greedy 90').count().Category.plot(color='green', label='threshold 90%')
+        df.groupby('Min cover set Greedy 95').count().Category.plot(color='blue',label='threshold 95%')
+        # df.groupby('Min cover set Greedy').count().Category.plot(color='cyan')
+        df.groupby('Min Cover set ILP').count().Category.plot(color='red', label='threshold 100%', )
+        plt.xlabel('Minimum cover set size')
+        plt.ylabel('Number of categories')
+        plt.title(title)
+        plt.xticks(rotation=45)
+        plt.legend()
+        plt.show()
+
+
+    def show_graph(self, G, nx):
+        # plt.figure(figsize=(10, 8))
+        nx.draw_shell(G, with_labels=True)
 
     def plt_show_and_title(self, title):
         plt.title(title)

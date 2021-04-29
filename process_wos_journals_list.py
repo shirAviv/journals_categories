@@ -29,6 +29,55 @@ class ProcessWOSJournals:
             categories_dict[category]['journals']=journals
         return categories_dict, full_df
 
+    def get_wos_categories_and_journals_ESCI(self, cat_file, journals_file_ESCI, utils=None):
+        categories = utils.load_csv_data_to_df(cat_file)
+        print(categories)
+        categories_dict = categories.set_index('Categories').T.to_dict('list')
+        full_df = self.get_full_wos_df_ESCI(journals_file_ESCI, utils)
+        full_df[['WOS Categories','num WOS Cats']]=full_df.apply(lambda row: pd.Series(self.remove_repeating_categories(row['WOS Categories'])), axis=1)
+        # full_df['num WOS Cats']=full_df.apply(lambda row: pd.Series(self))
+        for category in categories_dict:
+            categories_dict[category]=dict()
+            cond=full_df['WOS Categories'].str.find('|'+category+'|')!=-1
+            journals=full_df.loc[cond,:]
+            if not journals['Journal title'].is_unique:
+                print('not unique journal in cat {}'.format(category))
+            categories_dict[category]['journals']=journals
+        return categories_dict, full_df
+
+    def get_full_wos_df_ESCI(self, journals_file_ESCI, utils=None):
+        df1 = utils.load_csv_data_to_df(journals_file_ESCI)
+        full_df = df1
+        full_df.sort_values(by='Journal title', kind='mergesort', inplace=True, ignore_index=True)
+        dupes_df = full_df.loc[full_df.duplicated(['Journal title'], keep=False), :].copy()
+        dupes_df.sort_values(by='Journal title', kind='mergesort', inplace=True)
+        cond = dupes_df['Journal title'] == dupes_df["Journal title"].shift(1)
+        idxs = dupes_df.index
+        idxs_index = 0
+        journal_name = 'unknown'
+        for idx in idxs:
+            if journal_name != dupes_df.loc[idx]['Journal title']:
+                journal_name = dupes_df.loc[idx]['Journal title']
+                occurence = 1
+            else:
+                occurence += 1
+                if occurence == 2:
+                    full_df.loc[idxs[idxs_index - 1]]['WOS Categories'] += '| ' + full_df.loc[idx]['WOS Categories']
+                if occurence == 3:
+                    full_df.loc[idxs[idxs_index - 2]]['WOS Categories'] += '| ' + full_df.loc[idx][
+                        'WOS Categories']
+                if occurence > 3 or occurence == 1:
+                    print('error')
+            idxs_index += 1
+        full_df.drop_duplicates(['Journal title'], inplace=True, ignore_index=True)
+        full_df['Journal title']=full_df['Journal title'].str.lower()
+        full_df['ISSN']=full_df['ISSN'].str.lower()
+        full_df['eISSN']=full_df['eISSN'].str.lower()
+        full_df[['ISSN','eISSN']]=full_df.apply(lambda row: pd.Series(self.remove_leading_zeros(row['ISSN'], row['eISSN'])), axis=1)
+        full_df[['ISSN','eISSN']]=full_df.apply(lambda row: pd.Series(self.remove_dash(row['ISSN'], row['eISSN'])), axis=1)
+
+        return full_df
+
     def get_full_wos_df(self, journals_file_AHCI, journals_file_SCIE, journals_file_SSCI, utils=None):
         df1 = utils.load_csv_data_to_df(journals_file_SCIE)
         df2 = utils.load_csv_data_to_df(journals_file_SSCI)
@@ -217,7 +266,12 @@ class ProcessWOSJournals:
                         if subject_code.strip()=='3330':
                             print('missing subject name for code 3330 in scopus')
                             continue
+
                         cond = scopus_categories['Code'] == subject_code.strip()
+                        if len(scopus_categories.loc[cond,'Field'])==0:
+                            print(journal_name)
+                            print(subject_code)
+                            continue
                         subject_name=scopus_categories.loc[cond,'Field'].iloc[0]
                         scopus_matched_categories=scopus_categories_dict
                         if not subject_name in scopus_categories_dict:
@@ -352,20 +406,21 @@ if __name__ == '__main__':
     # utils.save_obj(wos_to_scopus_categories_df,'wos_to_scopus_categories_for_group_mapping')
     # utils.save_obj(wos_journals_dict, "wos_journals_dict")
 
-    exit(0)
+
     # mapping=pwj.categories_mapping(df)
     # utils.save_obj(mapping,'wos_to_scopus_categories_mapping')
-    df1=utils.load_obj('wos_to_scopus_categories_mapping')
-    df_thresholds=pwj.extract_matches(df1)
+    # df1=utils.load_obj('wos_to_scopus_categories_mapping')
+    # df_thresholds=pwj.extract_matches(df1)
     # vis.plt_match_by_threshold(df_thresholds,'Scopus to WOS categories match')
 
-    cover_set=pwj.run_cover_set_per_category()
-    vis.plt_coverset_size(cover_set[['Num journals','Cover set size']], 'test')
+    # cover_set=pwj.run_cover_set_per_category()
+    # vis.plt_coverset_size(cover_set[['Num journals','Cover set size']], 'test')
 
     # wos_df=pwj.get_full_wos_df( 'wos-core_SCIE.csv', 'wos-core_SSCI.csv', 'wos-core_AHCI.csv')
     # scopus_categories, scopus_df=pwj.get_scopus_categories_and_journals('scopus_categories_full.csv', 'scopus_full_2020.csv')
-    # all_wos_journals_to_scopus_categories_dict=pwj.get_scopus_categories_for_all_journals(df)
-    # utils.save_obj(all_wos_journals_to_scopus_categories_dict,'no_cat_wos_to_scopus_categories_for_group_mapping')
+    df1 = utils.load_obj('wos_to_scopus_categories_for_group_mapping_v1')
+    all_wos_journals_to_scopus_categories_dict=pwj.get_scopus_categories_for_all_journals(df1)
+    utils.save_obj(all_wos_journals_to_scopus_categories_dict,'no_cat_wos_to_scopus_categories_for_group_mapping')
     # pwj.run_groups_for_all_wos_journals()
 
     # print(df)
