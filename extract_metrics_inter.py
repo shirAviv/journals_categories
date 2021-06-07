@@ -21,14 +21,14 @@ class ExtractMetricsInter:
         # df_wos_cover_set = self.cover_set.run_cover_set_per_category_wos(df1)
         # self.utils.save_obj(df_wos_cover_set,'cover_set_wos_to_scopus')
         df_wos_cover_set = self.utils.load_obj('cover_set_wos_to_scopus')
-        self.vis.plot_cover_set_inter(df_wos_cover_set, "WOS categories cover set by Scopus")
+        self.vis.plot_cover_set_inter(df_wos_cover_set, "WOS categories cover set by Scopus - cumulative")
 
         # for scopus_category, row in df2.T.iterrows():
         #     to_remove=row['journals'].loc[row['journals']['Scopus Journal title']=='']
         # df_scopus_cover_set=self.cover_set.run_cover_set_per_category_scopus(df2.T)
         # self.utils.save_obj(df_scopus_cover_set,'cover_set_scopus_to_wos')
         df_scopus_cover_set=self.utils.load_obj('cover_set_scopus_to_wos')
-        self.vis.plot_cover_set_inter(df_scopus_cover_set,"Scopus categories cover set by WOS")
+        self.vis.plot_cover_set_inter(df_scopus_cover_set,"Scopus categories cover set by WOS - cumulative")
 
     def run_cover_set_all(self):
         # df1 = self.utils.load_obj('wos_to_scopus_categories_for_group_mapping_v1')
@@ -242,6 +242,38 @@ class ExtractMetricsInter:
         for cat in cats_to_remove:
             del wos_to_scopus_sub_groups_dict[cat]
         return wos_to_scopus_sub_groups_dict
+
+
+    def run_thresholds(self, utils, psj=None, pwj=None, vis=None):
+        mapping_scop_to_wos = utils.load_obj('scopus_to_wos_categories_mapping')
+        df_thresholds_scop_to_wos = self.extract_matches(mapping_df=mapping_scop_to_wos)
+        mapping_wos_to_scop = utils.load_obj('wos_to_scopus_categories_mapping')
+        df_thresholds_wos_to_scop = self.extract_matches(mapping_df=mapping_wos_to_scop)
+        self.vis.plt_match_by_threshold(df_thresholds_wos_to_scop, df_thresholds_scop_to_wos,
+                                   'Categories match by threshold')
+
+    def extract_matches(self, mapping_df):
+        totals_df=mapping_df.loc['Total'].copy()
+        mapping_df.drop(index='Total', inplace=True)
+        maxValuesObj = mapping_df.max()
+        maxValueIndexObj = mapping_df.idxmax()
+        a=maxValueIndexObj.duplicated()
+        df_thresholds=pd.DataFrame(columns=['Threshold','Percent of Categories'])
+        for step in range(0,100,5):
+            threshold=step/100
+            count_above_threshold=(maxValuesObj / totals_df) >= threshold
+            categories_with_match=maxValueIndexObj.loc[count_above_threshold]
+            count_below_threshold=(maxValuesObj / totals_df) < threshold
+            categories_without_match=maxValueIndexObj.loc[count_below_threshold]
+            num_categories_with_match = len(categories_with_match)
+            percent_categories_with_match = num_categories_with_match*100 / len(totals_df)
+            print('for threshold {}, matched {} categories'.format(threshold, percent_categories_with_match))
+            row={'Threshold':threshold,'Percent of Categories':percent_categories_with_match}
+            df_thresholds=df_thresholds.append(row, ignore_index=True)
+        df_thresholds.set_index('Threshold', inplace=True)
+        return df_thresholds
+
+
 
 
 

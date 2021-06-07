@@ -78,11 +78,13 @@ class ProcessWOSJournals:
 
         return full_df
 
-    def get_full_wos_df(self, journals_file_AHCI, journals_file_SCIE, journals_file_SSCI, utils=None):
+    def get_full_wos_df(self, journals_file_AHCI, journals_file_SCIE, journals_file_SSCI, journals_file_ESCI, utils=None):
         df1 = utils.load_csv_data_to_df(journals_file_SCIE)
         df2 = utils.load_csv_data_to_df(journals_file_SSCI)
         df3 = utils.load_csv_data_to_df(journals_file_AHCI)
-        full_df = (df1.append(df2)).append(df3)
+        df4 = utils.load_csv_data_to_df(journals_file_ESCI)
+
+        full_df = ((df1.append(df2)).append(df3)).append(df4)
         full_df.sort_values(by='Journal title', kind='mergesort', inplace=True, ignore_index=True)
         dupes_df = full_df.loc[full_df.duplicated(['Journal title'], keep=False), :].copy()
         dupes_df.sort_values(by='Journal title', kind='mergesort', inplace=True)

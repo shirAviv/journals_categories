@@ -392,6 +392,19 @@ class ExtractMetricsIntra:
         print('total {}'.format(len(large_cats)))
         return large_cats
 
+    def get_num_journals_in_cats_distribution(self, df,name):
+        df['count journals'] = df.apply(lambda row: pd.Series(len(row['journals'])), axis=1)
+        sorted_cats = df.sort_values(by='count journals')
+        interval=pd.interval_range(df['count journals'].min(), df['count journals'].max(), periods=15)
+        interval=pd.interval_range(start=df['count journals'].min(), periods=30, freq=15)
+
+        df['myQuanBins'] = pd.cut(df['count journals'], bins=interval)
+
+        # df1=df.groupby(by='count journals').count().journals
+        # bins=pd.qcut(df.groupby(by='count journals').count(), 10)
+        df_sorted=df['myQuanBins'].value_counts().sort_index()
+        self.vis.plt_histogram_journals(df=df_sorted, title= name)
+
 
     def prep_data_for_venn_subset(self,dict):
         fig, ax= self.vis.get_subplots_for_venn()
@@ -810,6 +823,27 @@ class ExtractMetricsIntra:
         self.vis.plt_groups_max(groups_by_num_categories, plt_by=plt_by, title=title)
         self.vis.plt_clear()
 
+
+    def plot_avg_sum_of_squares_by_cats(self):
+        journals_with_cats_metrics_ranking_wos = self.utils.load_obj('journals_with_cats_metrics_wos')
+        journals_with_multiple_categories = journals_with_cats_metrics_ranking_wos.loc[
+            journals_with_cats_metrics_ranking_wos['num categories'] > 1]
+        plt_by = 'JIF avg SOS'
+        title = 'WOS - Average sum of square of percentile ranking by number of categories'
+        self.vis.plt_group_data_with_box_plot(journals_with_multiple_categories, x='num categories',
+                                              plt_by=plt_by, title=title)
+        self.vis.plt_clear()
+        print('done')
+        journals_with_cats_metrics_ranking_scopus = self.utils.load_obj('journals_with_cats_metrics_ranking_scopus')
+        journals_with_multiple_categories = journals_with_cats_metrics_ranking_scopus.loc[
+            journals_with_cats_metrics_ranking_scopus['num categories'] > 1]
+        plt_by = 'SJR avg SOS'
+        title = 'Scopus - Average sum of square of percentile ranking by number of categories'
+        self.vis.plt_group_data_with_box_plot(journals_with_multiple_categories, x='num categories',
+                                              plt_by=plt_by, title=title)
+        self.vis.plt_clear()
+        print('done')
+
     def get_outlier_journals(self,df, wos=True):
         name = 'Total_num_small_cats_wos'
         small_cats=self.get_small_categories(df, name)
@@ -868,7 +902,7 @@ class ExtractMetricsIntra:
         return cats_set
 
 
-    def run_cover_set_per_cat(self, df, coverset, wos=True):
+    def run_cover_set_per_cat(self, df, coverset, wos=True, threshold=1):
 
 
         df_results = pd.DataFrame(
@@ -881,10 +915,10 @@ class ExtractMetricsIntra:
                 continue;
             cats_dict=(df.loc[cats_set]).to_dict()
             cats_dict.pop(category)
-            journals = list(row['Journal title'])
-            cover_set_greedy = coverset.cover_set_greedy(journals=journals, cats_dict=cats_dict)
+            journals = set(row['Journal title'])
+            cover_set_greedy = coverset.cover_set_greedy(journals_set=journals, cats_dict=cats_dict, threshold=threshold)
             greedy_cover_set_size = len(cover_set_greedy)
-            if greedy_cover_set_size>0:
+            if greedy_cover_set_size>0 and threshold==1:
                 const_arr = coverset.build_array_intra(row, cats_dict=cats_dict)
                 ilp_model = coverset.build_model(const_arr)
                 status, objective = coverset.run_model(ilp_model)
@@ -894,6 +928,10 @@ class ExtractMetricsIntra:
                 print('Cat {}, status {}, objective {}'.format(category, status, objective))
                 record = {'Category': category, 'Num journals': len(journals), 'Num matching cats': len(cats_dict),
                       'Min cover set Greedy': greedy_cover_set_size, 'Min Cover set ILP': int(objective)}
+                df_results = df_results.append(record, ignore_index=True)
+            if greedy_cover_set_size>0 and threshold<1:
+                record = {'Category': category, 'Num journals': len(journals), 'Num matching cats': len(cats_dict),
+                          'Min cover set Greedy': greedy_cover_set_size, 'Min Cover set ILP': 0}
                 df_results = df_results.append(record, ignore_index=True)
         print(df_results)
         return df_results
@@ -921,18 +959,20 @@ class ExtractMetricsIntra:
 
     def run_cover_set(self):
         df_wos_cats_with_ranks = self.utils.load_obj("categories_with_ranks_df_wos")
-        wos_coverset_df = self.run_cover_set_per_cat(df_wos_cats_with_ranks, self.cover_set, wos=True)
-        self.utils.save_obj(wos_coverset_df, 'cover_set_wos_intra')
+        wos_coverset_df = self.run_cover_set_per_cat(df_wos_cats_with_ranks, self.cover_set, wos=True, threshold=0.95)
+        self.utils.save_obj(wos_coverset_df, 'cover_set_wos_intra_0.95')
         df_scopus_cats_with_ranks = self.utils.load_obj("categories_with_ranks_df_scopus")
-        scopus_coverset_df = self.run_cover_set_per_cat(df_scopus_cats_with_ranks, self.cover_set, wos=False)
-        self.utils.save_obj(scopus_coverset_df, 'cover_set_scopus_intra')
+        scopus_coverset_df = self.run_cover_set_per_cat(df_scopus_cats_with_ranks, self.cover_set, wos=False, threshold=0.95)
+        self.utils.save_obj(scopus_coverset_df, 'cover_set_scopus_intra_0.95')
 
     def analyse_cover_set(self):
-        wos_coverset=self.utils.load_obj("cover_set_wos_intra")
-        scopus_coverset = self.utils.load_obj("cover_set_scopus_intra")
+        wos_coverset=self.utils.load_obj("cover_set_wos_intra_0.95")
+        wos_coverset.rename(columns={'Min cover set Greedy': 'Min Cover set Greedy'}, inplace=True)
+        scopus_coverset = self.utils.load_obj("cover_set_scopus_intra_0.95")
+        scopus_coverset.rename(columns={'Min cover set Greedy': 'Min Cover set Greedy'}, inplace=True)
         scopus_coverset_max_journals=scopus_coverset['Num journals'].values.max()
         scopus_coverset_max_cover = scopus_coverset['Min Cover set ILP'].values.max()
-        self.vis.plt_coverset_size(wos_coverset, scopus_coverset, label1='WOS', label2='Scopus', title1="Minimal cover size by number of journals", title2= "Minimal cover size by bumber of categories")
+        self.vis.plt_coverset_size(wos_coverset, scopus_coverset, label1='WOS', label2='Scopus', title1="Minimal cover size by number of journals", title2= "Minimal cover size by number of categories",cover_set_method='Greedy')
         print(wos_coverset)
 
     def prep_data_for_graph(self, dict):

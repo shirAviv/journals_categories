@@ -11,22 +11,24 @@ def run_intra_metrics():
     df1 = utils.load_obj('wos_to_scopus_categories_for_group_mapping_v1')
     df2 = utils.load_obj('scopus_to_wos_categories_for_group_mapping')
     df2=df2.T
-    extractMetricsIntra.run_cover_set_all()
+    # extractMetricsIntra.run_cover_set_all()
     # extractMetricsIntra.calc_mean_sd(df1,df2)
 
     # extractMetricsIntra.run_small_and_large_cats(df1, df2)
+    # extractMetricsIntra.get_num_journals_in_cats_distribution(df2,"Distribution of journals in categories")
+    # exit(0)
 
     # journals_dict_wos = utils.load_obj("wos_journals_dict_v3")
     # journals_dict_scopus = utils.load_obj("scopus_journals_dict_v2")
     # extractMetricsIntra.create_journals_with_cats_metrics('wos_journals_metrics.csv',journals_dict_wos,'scopus_scores_2019.csv',journals_dict_scopus)
-    exit(0)
+
     # intersect_df1, identity_group_dict_wos, sup_group_dict_wos, sub_group_dict_wos, intersect_group_dict_wos = extractMetricsIntra.find_groups(
     #     df1)
     # utils.save_obj(intersect_group_dict_wos, 'wos_intersect_group_dict')
 
     # identity_group_dict, sup_group_dict, sub_group_dict, intersect_group_dict=extractMetricsIntra.find_super_groups_and_intersection_all_journals_wos(df1)
 
-    # intersect_df2, identity_group_dict_scopus, sup_group_dict_scopus, sub_group_dict_scopus, intersect_group_dict_scopus=extractMetricsIntra.find_groups(df2.T)
+    # intersect_df2, identity_group_dict_scopus, sup_group_dict_scopus, sub_group_dict_scopus, intersect_group_dict_scopus=extractMetricsIntra.find_groups(df2)
     # utils.save_obj(intersect_df2, 'scopus_num_intersections')
     # utils.save_obj(sub_group_dict_scopus, 'scopus_sub_group')
     # utils.save_obj(sup_group_dict_scopus, 'scopus_sup_group')
@@ -47,14 +49,15 @@ def run_intra_metrics():
     # sub_group_dict_scopus=utils.load_obj('scopus_sub_group')
     # extractMetricsIntra.get_correlations_all_journals()
 
-    extractMetricsIntra.prep_data_for_venn_plots(df1, sub_group_dict_wos=None,
-                                                 intersect_group_dict_wos=intersect_group_dict, scopus_df=df2,
-                                                 sub_group_dict_scopus=None, intersect_group_dict_scopus=None)
+    # extractMetricsIntra.prep_data_for_venn_plots(df1, sub_group_dict_wos=None,
+    #                                              intersect_group_dict_wos=intersect_group_dict, scopus_df=df2,
+    #                                              sub_group_dict_scopus=None, intersect_group_dict_scopus=None)
 
     # extractMetricsIntra.create_journal_ranking_by_category(df1, df2.T)
 
     # extractMetricsIntra.get_categories_ranking_mismatch()
 
+    # extractMetricsIntra.plot_avg_sum_of_squares_by_cats()
     # extractMetricsIntra.create_clusters_by_categories(df1, df2.T)
 
 
@@ -64,22 +67,25 @@ def run_intra_metrics():
     # df_scopus_cats_with_ranks=extractMetricsIntra.add_cats_data(df_scopus_cats_with_ranks, scopus_journals_dict)
     # utils.save_obj(df_scopus_cats_with_ranks, 'categories_with_ranks_df_scopus')
 
-    # extractMetricsIntra.run_cover_set()
-    df_scopus_cats_with_ranks = utils.load_obj("categories_with_ranks_df_scopus")
-    scopus_categories_and_journals_dict = utils.load_obj("scopus_categories_and_journals_dict")
+    extractMetricsIntra.run_cover_set()
+    # df_scopus_cats_with_ranks = utils.load_obj("categories_with_ranks_df_scopus")
+    # scopus_categories_and_journals_dict = utils.load_obj("scopus_categories_and_journals_dict")
 
-    # extractMetricsIntra.analyse_cover_set()
+    extractMetricsIntra.analyse_cover_set()
 
 def run_inter_metrics():
     df1 = utils.load_obj('wos_to_scopus_categories_for_group_mapping_v1')
     df2 = utils.load_obj('scopus_to_wos_categories_for_group_mapping')
     df2 = df2.T
 
+    # extractMetricsInter.run_thresholds(utils)
+    extractMetricsInter.run_cover_set_per_cat()
+
 
     #extractMetricsInter.analyse_gaps_in_cover_set()
     # extractMetricsInter.run_cover_set_all()
     # extractMetricsInter.run_correlations_inter()
-
+    exit(0)
     # identity_group_dict_wos_to_scopus, sup_group_dict_wos_to_scopus, sub_group_dict_wos_to_scopus, intersect_group_dict_wos_to_scopus=extractMetricsInter.run_groups_per_wos_cat(utils)
 
     # utils.save_obj(sub_group_dict_wos_to_scopus, 'wos_to_scopus_sub_group')
@@ -139,11 +145,11 @@ if __name__ == '__main__':
     extractMetricsIntra.utils=utils
     extractMetricsIntra.vis=vis
     extractMetricsIntra.cover_set=cover_set
-    # run_intra_metrics()
+    run_intra_metrics()
     extractMetricsInter=ExtractMetricsInter()
     extractMetricsInter.utils = utils
     extractMetricsInter.vis = vis
     extractMetricsInter.cover_set = cover_set
-    run_inter_metrics()
+    # run_inter_metrics()
 
 

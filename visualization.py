@@ -32,7 +32,7 @@ class Visualization():
         ax.legend(['Scopus category for WOS category','WOS category for Scopus category'])
         plt.show()
 
-    def plt_coverset_size(self,df1,df2,title1, title2, label1, label2, extract_low=None, extract_high=None):
+    def plt_coverset_size(self,df1,df2,title1, title2, label1, label2, extract_low=None, extract_high=None, cover_set_method='ILP'):
         fig, (ax1, ax2)=plt.subplots(1, 2)
 
         sorted_df1 = df1.sort_values(by='Num journals')
@@ -43,16 +43,16 @@ class Visualization():
             sorted_df2=sorted_df2[sorted_df2['Num journals'] <= extract_low]
 
         if isinstance(extract_high, int):
-            sorted_df1 = df1.sort_values(by='Min Cover set ILP')
-            sorted_df2 = df2.sort_values(by='Min Cover set ILP')
-            sorted_df1=sorted_df1[sorted_df1['Min Cover set ILP'] >= extract_high]
-            sorted_df2=sorted_df2[sorted_df2['Min Cover set ILP'] >= extract_high]
+            sorted_df1 = df1.sort_values(by='Min Cover set '+cover_set_method)
+            sorted_df2 = df2.sort_values(by='Min Cover set '+cover_set_method)
+            sorted_df1=sorted_df1[sorted_df1['Min Cover set '+cover_set_method] >= extract_high]
+            sorted_df2=sorted_df2[sorted_df2['Min Cover set '+cover_set_method] >= extract_high]
 
 
 
         # ys1 = sorted_df1['Min cover set Greedy'].values
-        ys1 = sorted_df1['Min Cover set ILP'].values
-        ys2 = sorted_df2['Min Cover set ILP'].values
+        ys1 = sorted_df1['Min Cover set '+cover_set_method].values
+        ys2 = sorted_df2['Min Cover set '+cover_set_method].values
         xs1=sorted_df1['Num journals'].values
         xs2 = sorted_df2['Num journals'].values
 
@@ -60,8 +60,6 @@ class Visualization():
         ax1.scatter(xs2,ys2, color='green', label=label2)
         ax1.set_ylabel('Min cover set size')
         ax1.set_xlabel('Number of journals')
-
-
 
         ax1.set_title(title1)
 
@@ -73,16 +71,13 @@ class Visualization():
             sorted_df2=sorted_df2[sorted_df2['Num matching cats'] <= extract_low-10]
 
         if isinstance(extract_high, int):
-            sorted_df1 = df1.sort_values(by='Min Cover set ILP')
-            sorted_df2 = df2.sort_values(by='Min Cover set ILP')
-            sorted_df1 = sorted_df1[sorted_df1['Min Cover set ILP'] >= extract_high]
-            sorted_df2 = sorted_df2[sorted_df2['Min Cover set ILP'] >= extract_high]
+            sorted_df1 = df1.sort_values(by='Min Cover set '+cover_set_method)
+            sorted_df2 = df2.sort_values(by='Min Cover set '+cover_set_method)
+            sorted_df1 = sorted_df1[sorted_df1['Min Cover set '+cover_set_method] >= extract_high]
+            sorted_df2 = sorted_df2[sorted_df2['Min Cover set '+cover_set_method] >= extract_high]
 
-
-
-
-        ys1 = sorted_df1['Min Cover set ILP'].values
-        ys2 = sorted_df2['Min Cover set ILP'].values
+        ys1 = sorted_df1['Min Cover set '+cover_set_method].values
+        ys2 = sorted_df2['Min Cover set '+cover_set_method].values
         xs1 = sorted_df1['Num matching cats'].values
         xs2 = sorted_df2['Num matching cats'].values
 
@@ -95,7 +90,7 @@ class Visualization():
 
         plt.subplots_adjust(wspace=0.3, hspace=0.3)
         handles, labels = ax2.get_legend_handles_labels()
-        fig.legend(handles, labels, loc=(0.85, 0.55))
+        fig.legend(handles, labels, loc=(0.87, 0.75))
         plt.show()
 
     def plt_histogram_cats(self, df, title):
@@ -116,6 +111,21 @@ class Visualization():
 
         plt.xlabel('Number of categories')
         plt.ylabel('Number of Journals')
+        plt.title(title)
+        plt.show()
+
+    def plt_histogram_journals(self, df, title):
+        fig, ax = plt.subplots(1, 1)
+        # for i, categorical_feature in enumerate(df['myQuanBins']):
+        df.plot(kind='bar',ax=ax)
+        plt.xticks(np.arange(len(df)), df.index, rotation=70)
+
+        # set the locations of the xticks
+
+        # fig.show()
+
+        plt.xlabel('Number of Journals')
+        plt.ylabel('Number of Categories')
         plt.title(title)
         plt.show()
 
@@ -251,14 +261,17 @@ class Visualization():
         axis.set_ylabel(ylabel)
 
     def plot_cover_set_inter(self, df, title):
-        df.groupby('Min cover set Greedy 90').count().Category.plot(color='green', label='threshold 90%')
-        df.groupby('Min cover set Greedy 95').count().Category.plot(color='blue',label='threshold 95%')
+        df.groupby('Min cover set Greedy 90').count().Category.cumsum().plot(color='green', label='threshold 90%')
+        df=df.loc[df['Min cover set Greedy 95']<60]
+        df.groupby('Min cover set Greedy 95').count().Category.cumsum().plot(color='blue',label='threshold 95%')
         # df.groupby('Min cover set Greedy').count().Category.plot(color='cyan')
-        df.groupby('Min Cover set ILP').count().Category.plot(color='red', label='threshold 100%', )
+        df=df.loc[df['Min Cover set ILP']<90]
+        df.groupby('Min Cover set ILP').count().Category.cumsum().plot(color='red', label='threshold 100%' )
         plt.xlabel('Minimum cover set size')
         plt.ylabel('Number of categories')
         plt.title(title)
-        plt.xticks(rotation=45)
+        xticks=[x for x in range(0,df.groupby('Min Cover set ILP').count().index.max(),5)]
+        plt.xticks(xticks, rotation=45)
         plt.legend()
         plt.show()
 
