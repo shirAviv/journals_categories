@@ -29,6 +29,25 @@ class ExtractMetricsInter:
         # self.utils.save_obj(df_scopus_cover_set,'cover_set_scopus_to_wos')
         df_scopus_cover_set=self.utils.load_obj('cover_set_scopus_to_wos')
         self.vis.plot_cover_set_inter(df_scopus_cover_set,"Scopus categories cover set by WOS - cumulative")
+        # df_scopus_cover_set_no_outlier=df_scopus_cover_set[df_scopus_cover_set["Num journals"] < 1000]
+
+        self.vis.plt_coverset_size(df_wos_cover_set, df_scopus_cover_set_no_outlier,
+                                   label1='Scopus categories \nmin cover of \nWOS categories',
+                                   label2='WOS categories \nmin cover of \nScopus categories',
+                                   title1="Minimal cover size \n by number of journals",
+                                   title2= "Minimal cover size \n by number of covering categories",cover_set_method='ILP')
+        self.vis.plt_coverset_size(df_wos_cover_set, df_scopus_cover_set_no_outlier,
+                                   label1='Scopus categories \nmin cover of \nWOS categories',
+                                   label2='WOS categories \nmin cover of \nScopus categories',
+                                   title1="Minimal cover size \n by number of journals",
+                                   title2='Minimal cover size \n by number of covering categories', cover_set_method='ILP', extract_low=20)
+
+        self.vis.plt_coverset_size(df_wos_cover_set, df_scopus_cover_set_no_outlier,
+                                   label1='Scopus categories \nmin cover of \nWOS categories',
+                                   label2='WOS categories \nmin cover of \nScopus categories',
+                                   title1="Minimal cover size \n by number of journals",
+                                   title2='Minimal cover size \n by number of covering categories',
+                                   cover_set_method='ILP', extract_high=20)
 
     def run_cover_set_all(self):
         # df1 = self.utils.load_obj('wos_to_scopus_categories_for_group_mapping_v1')
@@ -220,7 +239,7 @@ class ExtractMetricsInter:
 
     def prep_data_for_venn_plots(self,wos_df,sub_group_dict_wos, intersect_group_dict_wos, scopus_df, sub_group_dict_scopus,intersect_group_dict_scopus, extractMetrics ):
         # extractMetrics.prep_data_for_venn_subset(sub_group_dict_scopus)
-        # extractMetrics.prep_data_for_venn_intersect(intersect_group_dict_wos, 0.90,wos_df.T, scopus_df.T)
+        extractMetrics.prep_data_for_venn_intersect(intersect_group_dict_wos, 0.90,wos_df.T, scopus_df.T)
         # print('0.8')
         # extractMetrics.prep_data_for_venn_intersect(intersect_group_dict_wos, 0.8, wos_df.T)
 

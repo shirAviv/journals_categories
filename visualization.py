@@ -58,7 +58,7 @@ class Visualization():
 
         ax1.scatter(xs1, ys1,color='blue', label=label1)
         ax1.scatter(xs2,ys2, color='green', label=label2)
-        ax1.set_ylabel('Min cover set size')
+        ax1.set_ylabel('Minimal cover size')
         ax1.set_xlabel('Number of journals')
 
         ax1.set_title(title1)
@@ -90,7 +90,9 @@ class Visualization():
 
         plt.subplots_adjust(wspace=0.3, hspace=0.3)
         handles, labels = ax2.get_legend_handles_labels()
-        fig.legend(handles, labels, loc=(0.87, 0.75))
+        fig.legend(handles, labels, loc=(0.87, 0.55))
+        # fig.legend(handles, labels, loc=(0.78, 0.55))
+
         plt.show()
 
     def plt_histogram_cats(self, df, title):

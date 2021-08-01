@@ -684,8 +684,12 @@ class ExtractMetricsIntra:
 
     def get_categories_ranking_mismatch_wos(self):
         journals_with_cats_metrics_wos = self.utils.load_obj("wos_journals_with_metrics")
-        journals_with_cats_metrics_wos['JIF Max Min Range'] = np.nan
-        journals_with_cats_metrics_wos['JIF avg SOS'] = np.nan
+        journals_with_cats_metrics_wos['Percentile ranking Max Min Range'] = np.nan
+        journals_with_cats_metrics_wos['Percentile ranking ASOS'] = np.nan
+        journals_with_cats_metrics_wos['Percentile ranking var'] = np.nan
+        journals_with_cats_metrics_wos['Percentile ranking mean'] = np.nan
+
+
         # journals_with_cats_metrics_wos['Rank Five year JIF'] = np.nan
         # journals_with_cats_metrics_wos['Rank Eigenfactor'] = np.nan
         # journals_with_cats_metrics_wos['Rank Norm Eigenfactor'] = np.nan
@@ -713,17 +717,31 @@ class ExtractMetricsIntra:
                     # rank_norm_eigenfactor.append(metrics['Rank Norm Eigenfactor'].values[0])
             rank_jIF=np.array(rank_jIF)
             max_min_range=rank_jIF.ptp()
+
             journals_with_cats_metrics_wos.loc[
-                (journals_with_cats_metrics_wos['Journal name'] == journal_name), 'JIF Max Min Range'] = max_min_range
+                (journals_with_cats_metrics_wos['Journal name'] == journal_name), 'Percentile ranking Max Min Range'] = max_min_range
             avg_sum_of_squares=np.linalg.norm(rank_jIF)/np.size(rank_jIF)
             journals_with_cats_metrics_wos.loc[
-                (journals_with_cats_metrics_wos['Journal name'] == journal_name), 'JIF avg SOS'] = avg_sum_of_squares
+                (journals_with_cats_metrics_wos['Journal name'] == journal_name), 'Percentile ranking ASOS'] = avg_sum_of_squares
+            var_JIF =np.var(rank_jIF)
+            journals_with_cats_metrics_wos.loc[
+                (journals_with_cats_metrics_wos['Journal name'] == journal_name), 'Percentile ranking var'] = var_JIF
+            mean_JIF =np.mean(rank_jIF)
+            journals_with_cats_metrics_wos.loc[
+                (journals_with_cats_metrics_wos['Journal name'] == journal_name), 'Percentile ranking mean'] = mean_JIF
+            # asos2_JIF = (np.sum((rank_jIF-mean_JIF)**2))/np.size(rank_jIF)
+            # journals_with_cats_metrics_wos.loc[
+            #     (journals_with_cats_metrics_wos['Journal name'] == journal_name), 'JIF ASOS2'] = asos2_JIF
+
         return journals_with_cats_metrics_wos
 
     def get_categories_ranking_mismatch_scopus(self):
         journals_with_cats_metrics = self.utils.load_obj("scopus_journals_with_metrics")
-        journals_with_cats_metrics['SJR Max Min Range'] = np.nan
-        journals_with_cats_metrics['SJR avg SOS'] = np.nan
+        journals_with_cats_metrics['Percentile ranking Max Min Range'] = np.nan
+        journals_with_cats_metrics['Percentile ranking ASOS'] = np.nan
+        journals_with_cats_metrics['Percentile ranking var'] = np.nan
+        journals_with_cats_metrics['Percentile ranking mean'] = np.nan
+
         categories_with_ranks_df=self.utils.load_obj('categories_with_ranks_df_scopus')
         journals_dict = self.utils.load_obj("scopus_journals_dict")
         for journal_name, item in journals_dict.items():
@@ -743,10 +761,17 @@ class ExtractMetricsIntra:
             rank_sJR=np.array(rank_sJR)
             max_min_range=rank_sJR.ptp()
             journals_with_cats_metrics.loc[
-                (journals_with_cats_metrics['Journal name'] == journal_name), 'SJR Max Min Range'] = max_min_range
+                (journals_with_cats_metrics['Journal name'] == journal_name), 'Percentile ranking Max Min Range'] = max_min_range
             avg_sum_of_squares=np.linalg.norm(rank_sJR)/np.size(rank_sJR)
             journals_with_cats_metrics.loc[
-                (journals_with_cats_metrics['Journal name'] == journal_name), 'SJR avg SOS'] = avg_sum_of_squares
+                (journals_with_cats_metrics['Journal name'] == journal_name), 'Percentile ranking ASOS'] = avg_sum_of_squares
+            var_SJR = np.var(rank_sJR)
+            journals_with_cats_metrics.loc[
+                (journals_with_cats_metrics['Journal name'] == journal_name), 'Percentile ranking var'] = var_SJR
+            mean_SJR = np.mean(rank_sJR)
+            journals_with_cats_metrics.loc[
+                (journals_with_cats_metrics['Journal name'] == journal_name), 'Percentile ranking mean'] = mean_SJR
+
         return journals_with_cats_metrics
 
     def get_categories_ranking_mismatch(self):
@@ -759,16 +784,25 @@ class ExtractMetricsIntra:
     def analyse_categories_ranking_mismatch(self):
         journals_with_cats_metrics_ranking_wos = self.utils.load_obj('journals_with_cats_metrics_wos')
         journals_with_multiple_categories=journals_with_cats_metrics_ranking_wos.loc[journals_with_cats_metrics_ranking_wos['num categories']>1]
-        self.calc_correlations_gaps_in_percentiles_by_categories(journals_with_multiple_categories, db='WOS', column='JIF Max Min Range')
-        self.calc_correlations_gaps_in_percentiles_by_categories(journals_with_multiple_categories, db='WOS', column='JIF avg SOS')
+        self.calc_correlations_gaps_in_percentiles_by_categories(journals_with_multiple_categories, db='WOS', column='Percentile ranking Max Min Range')
+        self.calc_correlations_gaps_in_percentiles_by_categories(journals_with_multiple_categories, db='WOS', column='Percentile ranking ASOS')
+        self.calc_correlations_gaps_in_percentiles_by_categories(journals_with_multiple_categories, db='WOS', column='Percentile ranking var')
+        self.calc_correlations_gaps_in_percentiles_by_categories(journals_with_multiple_categories, db='WOS', column='Percentile ranking mean')
+
 
         # journals_with_multiple_categories=journals_with_multiple_categories.loc[np.isnan(journals_with_multiple_categories['JIF Max Min Range'])==False]
-        journals_with_cats_metrics_ranking_scopus = self.utils.load_obj('journals_with_cats_metrics_ranking_scopus')
+        journals_with_cats_metrics_ranking_scopus = self.utils.load_obj('journals_with_cats_metrics_scopus')
+
+        # journals_with_cats_metrics_ranking_scopus = self.utils.load_obj('journals_with_cats_metrics_ranking_scopus')
         journals_with_multiple_categories=journals_with_cats_metrics_ranking_scopus.loc[journals_with_cats_metrics_ranking_scopus['num categories']>1]
         # and journals_with_cats_metrics_ranking_scopus['num categories']<10]
         self.calc_correlations_gaps_in_percentiles_by_categories(journals_with_multiple_categories, db='Scopus',
-                                                                 column='SJR Max Min Range')
-        self.calc_correlations_gaps_in_percentiles_by_categories(journals_with_multiple_categories, db='Scopus', column='SJR avg SOS')
+                                                                 column='Percentile ranking Max Min Range')
+        self.calc_correlations_gaps_in_percentiles_by_categories(journals_with_multiple_categories, db='Scopus', column='Percentile ranking ASOS')
+        self.calc_correlations_gaps_in_percentiles_by_categories(journals_with_multiple_categories, db='Scopus', column='Percentile ranking var')
+        self.calc_correlations_gaps_in_percentiles_by_categories(journals_with_multiple_categories, db='Scopus', column='Percentile ranking mean')
+
+
 
     def create_clusters_by_categories(self, df_wos, df_scopus):
         journals_in_small_cats = self.get_outlier_journals(df_wos)
@@ -823,26 +857,70 @@ class ExtractMetricsIntra:
         self.vis.plt_groups_max(groups_by_num_categories, plt_by=plt_by, title=title)
         self.vis.plt_clear()
 
+    def plot_min_max_by_cats(self):
+        journals_with_cats_metrics_ranking_wos = self.utils.load_obj('journals_with_cats_metrics_wos')
+        journals_with_multiple_categories = journals_with_cats_metrics_ranking_wos.loc[
+            journals_with_cats_metrics_ranking_wos['num categories'] > 1]
+        plt_by = 'Percentile ranking Max Min Range'
+        title = 'WOS - MM of percentile ranking by number of categories'
+        self.vis.plt_group_data_with_box_plot(journals_with_multiple_categories, x='num categories',
+                                              plt_by=plt_by, title=title)
+        self.vis.plt_clear()
+        print('done')
+        journals_with_cats_metrics_ranking_scopus = self.utils.load_obj('journals_with_cats_metrics_scopus')
+        journals_with_multiple_categories = journals_with_cats_metrics_ranking_scopus.loc[
+            journals_with_cats_metrics_ranking_scopus['num categories'] > 1]
+        plt_by = 'Percentile ranking Max Min Range'
+        title = 'Scopus - MM of percentile ranking by number of categories'
+        self.vis.plt_group_data_with_box_plot(journals_with_multiple_categories, x='num categories',
+                                              plt_by=plt_by, title=title)
+        self.vis.plt_clear()
+        print('done')
+
 
     def plot_avg_sum_of_squares_by_cats(self):
         journals_with_cats_metrics_ranking_wos = self.utils.load_obj('journals_with_cats_metrics_wos')
         journals_with_multiple_categories = journals_with_cats_metrics_ranking_wos.loc[
             journals_with_cats_metrics_ranking_wos['num categories'] > 1]
-        plt_by = 'JIF avg SOS'
-        title = 'WOS - Average sum of square of percentile ranking by number of categories'
+        plt_by = 'Percentile ranking ASOS'
+        title = 'WOS - ASOS of percentile ranking by number of categories'
         self.vis.plt_group_data_with_box_plot(journals_with_multiple_categories, x='num categories',
                                               plt_by=plt_by, title=title)
         self.vis.plt_clear()
         print('done')
-        journals_with_cats_metrics_ranking_scopus = self.utils.load_obj('journals_with_cats_metrics_ranking_scopus')
+        journals_with_cats_metrics_ranking_scopus = self.utils.load_obj('journals_with_cats_metrics_scopus')
         journals_with_multiple_categories = journals_with_cats_metrics_ranking_scopus.loc[
             journals_with_cats_metrics_ranking_scopus['num categories'] > 1]
-        plt_by = 'SJR avg SOS'
-        title = 'Scopus - Average sum of square of percentile ranking by number of categories'
+        plt_by = 'Percentile ranking ASOS'
+        title = 'Scopus - ASOS of percentile ranking by number of categories'
         self.vis.plt_group_data_with_box_plot(journals_with_multiple_categories, x='num categories',
                                               plt_by=plt_by, title=title)
         self.vis.plt_clear()
         print('done')
+
+
+    def plot_mean_variance_by_cats(self ):
+        journals_with_cats_metrics_ranking_wos = self.utils.load_obj('journals_with_cats_metrics_wos')
+        journals_with_multiple_categories = journals_with_cats_metrics_ranking_wos.loc[
+            journals_with_cats_metrics_ranking_wos['num categories'] > 1]
+        plt_by = 'Percentile ranking var'
+        title = 'WOS - Variance of percentile ranking by number of categories'
+        self.vis.plt_group_data_with_box_plot(journals_with_multiple_categories, x='num categories',
+                                              plt_by=plt_by, title=title)
+        self.vis.plt_clear()
+        print('done')
+        journals_with_cats_metrics_ranking_scopus = self.utils.load_obj('journals_with_cats_metrics_scopus')
+
+        # journals_with_cats_metrics_ranking_scopus = self.utils.load_obj('journals_with_cats_metrics_ranking_scopus')
+        journals_with_multiple_categories = journals_with_cats_metrics_ranking_scopus.loc[
+            journals_with_cats_metrics_ranking_scopus['num categories'] > 1]
+        plt_by = 'Percentile ranking var'
+        title = 'Scopus - Variance of percentile ranking by number of categories'
+        self.vis.plt_group_data_with_box_plot(journals_with_multiple_categories, x='num categories',
+                                              plt_by=plt_by, title=title)
+        self.vis.plt_clear()
+        print('done')
+
 
     def get_outlier_journals(self,df, wos=True):
         name = 'Total_num_small_cats_wos'
@@ -972,7 +1050,7 @@ class ExtractMetricsIntra:
         scopus_coverset.rename(columns={'Min cover set Greedy': 'Min Cover set Greedy'}, inplace=True)
         scopus_coverset_max_journals=scopus_coverset['Num journals'].values.max()
         scopus_coverset_max_cover = scopus_coverset['Min Cover set ILP'].values.max()
-        self.vis.plt_coverset_size(wos_coverset, scopus_coverset, label1='WOS', label2='Scopus', title1="Minimal cover size by number of journals", title2= "Minimal cover size by number of categories",cover_set_method='Greedy')
+        self.vis.plt_coverset_size(wos_coverset, scopus_coverset, label1='WOS', label2='Scopus', title1="Minimal cover size \n by number of journals", title2= "Minimal cover size \n by number of covering categories",cover_set_method='Greedy')
         print(wos_coverset)
 
     def prep_data_for_graph(self, dict):
