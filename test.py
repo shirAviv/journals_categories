@@ -13,6 +13,10 @@ import numpy as np
 path='C:\\shir\\study\\bibliometrics\\journals'
 
 utils=Utils()
+
+
+
+
 pwj=ProcessWOSJournals()
 psj=ProcessScopusJournals()
 cs=CoverSet(path=utils.path)

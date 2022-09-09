@@ -29,7 +29,7 @@ class ExtractMetricsInter:
         # self.utils.save_obj(df_scopus_cover_set,'cover_set_scopus_to_wos')
         df_scopus_cover_set=self.utils.load_obj('cover_set_scopus_to_wos')
         self.vis.plot_cover_set_inter(df_scopus_cover_set,"Scopus categories cover set by WOS - cumulative")
-        # df_scopus_cover_set_no_outlier=df_scopus_cover_set[df_scopus_cover_set["Num journals"] < 1000]
+        df_scopus_cover_set_no_outlier=df_scopus_cover_set[df_scopus_cover_set["Num journals"] < 1000]
 
         self.vis.plt_coverset_size(df_wos_cover_set, df_scopus_cover_set_no_outlier,
                                    label1='Scopus categories \nmin cover of \nWOS categories',
@@ -239,7 +239,7 @@ class ExtractMetricsInter:
 
     def prep_data_for_venn_plots(self,wos_df,sub_group_dict_wos, intersect_group_dict_wos, scopus_df, sub_group_dict_scopus,intersect_group_dict_scopus, extractMetrics ):
         # extractMetrics.prep_data_for_venn_subset(sub_group_dict_scopus)
-        extractMetrics.prep_data_for_venn_intersect(intersect_group_dict_wos, 0.90,wos_df.T, scopus_df.T)
+        extractMetrics.prep_data_for_venn_intersect(intersect_group_dict_wos, 0.95,wos_df.T, scopus_df.T)
         # print('0.8')
         # extractMetrics.prep_data_for_venn_intersect(intersect_group_dict_wos, 0.8, wos_df.T)
 
@@ -278,7 +278,7 @@ class ExtractMetricsInter:
         maxValueIndexObj = mapping_df.idxmax()
         a=maxValueIndexObj.duplicated()
         df_thresholds=pd.DataFrame(columns=['Threshold','Percent of Categories'])
-        for step in range(0,100,5):
+        for step in range(0,105,5):
             threshold=step/100
             count_above_threshold=(maxValuesObj / totals_df) >= threshold
             categories_with_match=maxValueIndexObj.loc[count_above_threshold]

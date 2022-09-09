@@ -72,6 +72,9 @@ class ExtractMetricsIntra:
                     sjr = metrics['SJR'].values[0]
                     if isinstance(sjr,str):
                         sjr=sjr.replace(',','.')
+                    if sjr=='':
+                        count_missing += 1
+                        continue
                     record = {'Journal name': journal_name, 'num categories': num_categories,
                               'Total Cites': int(metrics['Total Cites (3years)'].values[0]),
                               'Total Refs': metrics['Total Refs.'].values[0],
@@ -79,7 +82,7 @@ class ExtractMetricsIntra:
                             'H index': metrics['H index'].values[0],
                             'Categories Q': metrics['Categories'].values[0],
                             'CiteScore': citeScore}
-            journals_with_cats_metrics = journals_with_cats_metrics.append(record, ignore_index=True)
+                    journals_with_cats_metrics = journals_with_cats_metrics.append(record, ignore_index=True)
         journals_with_cats_metrics['Total Cites'] = journals_with_cats_metrics['Total Cites'].apply(pd.to_numeric,
                                                                                                   errors='coerce')
         journals_with_cats_metrics['Total Refs'] = journals_with_cats_metrics['Total Refs'].apply(pd.to_numeric, errors='coerce')
@@ -400,8 +403,22 @@ class ExtractMetricsIntra:
 
         df['myQuanBins'] = pd.cut(df['count journals'], bins=interval)
 
-        # df1=df.groupby(by='count journals').count().journals
-        # bins=pd.qcut(df.groupby(by='count journals').count(), 10)
+        # df1=df.groupby(by='count journals').quantile()
+        percentiles_05 = df['count journals'].quantile([0.15])
+        percentiles_95 = df['count journals'].quantile([0.95])
+        df_perc_start=sorted_cats.loc[sorted_cats['count journals'] < percentiles_05.values[0],'count journals']
+        print(percentiles_05)
+        print('num cats in perc {}'.format(len(df_perc_start)))
+        print(df_perc_start)
+
+        df_perc_end=sorted_cats.loc[sorted_cats['count journals'] > percentiles_95.values[0], 'count journals']
+        print(percentiles_95)
+        print('num cats in perc {}'.format(len(df_perc_end)))
+        print(df_perc_end)
+
+        # print(sorted_cats[])
+        # print(sorted_cats[int(percentiles_98): -1])
+
         df_sorted=df['myQuanBins'].value_counts().sort_index()
         self.vis.plt_histogram_journals(df=df_sorted, title= name)
 
@@ -523,11 +540,11 @@ class ExtractMetricsIntra:
 
     def prep_data_for_venn_plots(self,wos_df,sub_group_dict_wos, intersect_group_dict_wos, scopus_df, sub_group_dict_scopus,intersect_group_dict_scopus ):
         # extractMetrics.prep_data_for_venn_subset(sub_group_dict_wos)
-        self.prep_data_for_venn_intersect(intersect_group_dict_wos, 0.85, wos_df.T)
+        # self.prep_data_for_venn_intersect(intersect_group_dict_wos, 0.85, wos_df.T)
         # print('0.8')
         # extractMetrics.prep_data_for_venn_intersect(intersect_group_dict_wos, 0.8, wos_df.T)
 
-        # self.prep_data_for_venn_subset(sub_group_dict_scopus)
+        self.prep_data_for_venn_subset(sub_group_dict_scopus)
         # self.prep_data_for_venn_intersect(intersect_group_dict_scopus, 0.80, scopus_df)
 
     def plt_histograms_intersect(self):
@@ -537,9 +554,9 @@ class ExtractMetricsIntra:
         self.vis.plt_histogram_cats_intersection(intersect_df2, title='Categories intersections in Scopus')
 
     def plt_histograms_num_cats(self):
-        journals_with_cats_metrics_wos = self.utils.load_obj("wos_journals_with_metrics")
+        journals_with_cats_metrics_wos = self.utils.load_obj("wos_all_journals_with_metrics")
         self.vis.plt_histogram_cats(journals_with_cats_metrics_wos, title="WOS number of categories per journal distribution")
-        journals_with_cats_metrics_scopus = self.utils.load_obj("scopus_journals_with_metrics")
+        journals_with_cats_metrics_scopus = self.utils.load_obj("scopus_all_journals_with_metrics")
         self.vis.plt_histogram_cats(journals_with_cats_metrics_scopus, title="Scopus number of categories per journal distribution")
 
     def create_journals_with_cats_metrics(self,metrics_file_wos, journals_dict_wos, metrics_file_scopus, journals_dict_scopus):
@@ -672,15 +689,15 @@ class ExtractMetricsIntra:
 
 
     def create_journal_ranking_by_categor(self, df_wos, df_scopus):
-        journals_with_cats_metrics_wos = self.utils.load_obj("wos_journals_with_metrics")
+        journals_with_cats_metrics_wos = self.utils.load_obj("wos_all_journals_with_metrics")
         categories_with_ranks_df_wos = self.create_journal_ranking_by_category_wos(df_wos,
                                                                                                   journals_with_cats_metrics_wos)
-        self.utils.save_obj(categories_with_ranks_df_wos, 'categories_with_ranks_df_wos')
+        self.utils.save_obj(categories_with_ranks_df_wos, 'categories_with_ranks_df_all_wos')
 
-        journals_with_cats_metrics_scopus = self.utils.load_obj("scopus_journals_with_metrics")
+        journals_with_cats_metrics_scopus = self.utils.load_obj("scopus_all_journals_with_metrics")
         categories_with_ranks_df_scopus = self.create_journal_ranking_by_category_scopus(df_scopus,
                                                                                                         journals_with_cats_metrics_scopus)
-        self.utils.save_obj(categories_with_ranks_df_scopus, 'categories_with_ranks_df_scopus')
+        self.utils.save_obj(categories_with_ranks_df_scopus, 'categories_with_ranks_df_all_scopus')
 
     def get_categories_ranking_mismatch_wos(self):
         journals_with_cats_metrics_wos = self.utils.load_obj("wos_journals_with_metrics")
@@ -783,24 +800,34 @@ class ExtractMetricsIntra:
 
     def analyse_categories_ranking_mismatch(self):
         journals_with_cats_metrics_ranking_wos = self.utils.load_obj('journals_with_cats_metrics_wos')
+        journals_with_cats_metrics_ranking_wos['Percentile ranking std']=journals_with_cats_metrics_ranking_wos.apply(lambda row: pd.Series(np.sqrt(row['Percentile ranking var'])), axis=1)
+
         journals_with_multiple_categories=journals_with_cats_metrics_ranking_wos.loc[journals_with_cats_metrics_ranking_wos['num categories']>1]
+        journals_with_multiple_categories=  journals_with_multiple_categories[np.isnan(journals_with_multiple_categories['JIF']) == False]
         self.calc_correlations_gaps_in_percentiles_by_categories(journals_with_multiple_categories, db='WOS', column='Percentile ranking Max Min Range')
         self.calc_correlations_gaps_in_percentiles_by_categories(journals_with_multiple_categories, db='WOS', column='Percentile ranking ASOS')
         self.calc_correlations_gaps_in_percentiles_by_categories(journals_with_multiple_categories, db='WOS', column='Percentile ranking var')
         self.calc_correlations_gaps_in_percentiles_by_categories(journals_with_multiple_categories, db='WOS', column='Percentile ranking mean')
+        self.calc_correlations_gaps_in_percentiles_by_categories(journals_with_multiple_categories, db='WOS', column='Percentile ranking std')
+
 
 
         # journals_with_multiple_categories=journals_with_multiple_categories.loc[np.isnan(journals_with_multiple_categories['JIF Max Min Range'])==False]
         journals_with_cats_metrics_ranking_scopus = self.utils.load_obj('journals_with_cats_metrics_scopus')
+        journals_with_cats_metrics_ranking_scopus['Percentile ranking std']=journals_with_cats_metrics_ranking_scopus.apply(lambda row: pd.Series(np.sqrt(row['Percentile ranking var'])), axis=1)
 
         # journals_with_cats_metrics_ranking_scopus = self.utils.load_obj('journals_with_cats_metrics_ranking_scopus')
         journals_with_multiple_categories=journals_with_cats_metrics_ranking_scopus.loc[journals_with_cats_metrics_ranking_scopus['num categories']>1]
+        journals_with_multiple_categories=  journals_with_multiple_categories[np.isnan(journals_with_multiple_categories['SJR']) == False]
+
         # and journals_with_cats_metrics_ranking_scopus['num categories']<10]
         self.calc_correlations_gaps_in_percentiles_by_categories(journals_with_multiple_categories, db='Scopus',
                                                                  column='Percentile ranking Max Min Range')
         self.calc_correlations_gaps_in_percentiles_by_categories(journals_with_multiple_categories, db='Scopus', column='Percentile ranking ASOS')
         self.calc_correlations_gaps_in_percentiles_by_categories(journals_with_multiple_categories, db='Scopus', column='Percentile ranking var')
         self.calc_correlations_gaps_in_percentiles_by_categories(journals_with_multiple_categories, db='Scopus', column='Percentile ranking mean')
+        self.calc_correlations_gaps_in_percentiles_by_categories(journals_with_multiple_categories, db='Scopus', column='Percentile ranking std')
+
 
 
 

@@ -12,12 +12,12 @@ import pickle
 class ProcessWOSJournals:
 
 
-    def get_wos_categories_and_journals(self, cat_file, journals_file_SCIE,journals_file_SSCI,journals_file_AHCI, utils=None):
+    def get_wos_categories_and_journals(self, cat_file, journals_file_SCIE,journals_file_SSCI,journals_file_AHCI,journals_file_ESCI, utils=None):
         categories = utils.load_csv_data_to_df(cat_file)
         print(categories)
         categories_dict = categories.set_index('Categories').T.to_dict('list')
         full_df = self.get_full_wos_df(journals_file_AHCI, journals_file_SCIE,
-                                                        journals_file_SSCI, utils)
+                                                        journals_file_SSCI, journals_file_ESCI,utils=utils)
         full_df[['WOS Categories','num WOS Cats']]=full_df.apply(lambda row: pd.Series(self.remove_repeating_categories(row['WOS Categories'])), axis=1)
         # full_df['num WOS Cats']=full_df.apply(lambda row: pd.Series(self))
         for category in categories_dict:

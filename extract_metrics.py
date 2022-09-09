@@ -7,6 +7,7 @@ from cover_set import CoverSet
 import pandas as pd
 
 def run_intra_metrics():
+    # extractMetricsIntra.plt_histograms_num_cats()
     # extractMetricsIntra.plt_histograms_intersect()
     df1 = utils.load_obj('wos_to_scopus_categories_for_group_mapping_v1')
     df2 = utils.load_obj('scopus_to_wos_categories_for_group_mapping')
@@ -15,6 +16,7 @@ def run_intra_metrics():
     # extractMetricsIntra.calc_mean_sd(df1,df2)
 
     # extractMetricsIntra.run_small_and_large_cats(df1, df2)
+    # extractMetricsIntra.get_num_journals_in_cats_distribution(df1,"Distribution of journals in categories")
     # extractMetricsIntra.get_num_journals_in_cats_distribution(df2,"Distribution of journals in categories")
     # exit(0)
 
@@ -47,19 +49,19 @@ def run_intra_metrics():
     # utils.write_to_csv(scopus_intersect_mat,'scopus_intersects_for_graphs_above_0.1.csv', index=True)
 
     # extractMetricsIntra.generate_graph(scopus_intersect_mat)
-    # sub_group_dict_scopus=utils.load_obj('scopus_sub_group')
+    sub_group_dict_scopus=utils.load_obj('scopus_sub_group')
     # extractMetricsIntra.get_correlations_all_journals()
 
-    # extractMetricsIntra.prep_data_for_venn_plots(df1, sub_group_dict_wos=None,
-    #                                              intersect_group_dict_wos=intersect_group_dict, scopus_df=df2,
-    #                                              sub_group_dict_scopus=None, intersect_group_dict_scopus=None)
+    extractMetricsIntra.prep_data_for_venn_plots(df1, sub_group_dict_wos=None,
+                                                 intersect_group_dict_wos=None, scopus_df=df2,
+                                                 sub_group_dict_scopus=sub_group_dict_scopus, intersect_group_dict_scopus=None)
 
     # extractMetricsIntra.create_journal_ranking_by_category(df1, df2.T)
 
     # extractMetricsIntra.get_categories_ranking_mismatch()
     # extractMetricsIntra.plot_mean_variance_by_cats()
-    extractMetricsIntra.plot_avg_sum_of_squares_by_cats()
-    extractMetricsIntra.plot_min_max_by_cats()
+    #extractMetricsIntra.plot_avg_sum_of_squares_by_cats()
+    #extractMetricsIntra.plot_min_max_by_cats()
     # extractMetricsIntra.create_clusters_by_categories(df1, df2.T)
 
 
@@ -73,7 +75,7 @@ def run_intra_metrics():
     # df_scopus_cats_with_ranks = utils.load_obj("categories_with_ranks_df_scopus")
     # scopus_categories_and_journals_dict = utils.load_obj("scopus_categories_and_journals_dict")
 
-    # extractMetricsIntra.analyse_cover_set()
+    extractMetricsIntra.analyse_cover_set()
 
 def run_inter_metrics():
     df1 = utils.load_obj('wos_to_scopus_categories_for_group_mapping_v1')
@@ -81,8 +83,8 @@ def run_inter_metrics():
     df2 = df2.T
 
     # extractMetricsInter.run_thresholds(utils)
-    extractMetricsInter.run_cover_set_per_cat()
-    exit(0)
+    # extractMetricsInter.run_cover_set_per_cat()
+    # exit(0)
 
     #extractMetricsInter.analyse_gaps_in_cover_set()
     # extractMetricsInter.run_cover_set_all()
@@ -109,6 +111,8 @@ def run_inter_metrics():
     for key, val in intersect_group_dict_wos_to_scopus.items():
         record = {'categories': key, 'num intersecting categories': int(len(val))}
         intersect_df = intersect_df.append(record, ignore_index=True)
+        if len(val.loc[val['ratio']>0.95]):
+            print('cat {} ration larger than 0.95'.format(key))
     intersect_df['num intersecting categories'] = intersect_df['num intersecting categories'].apply(pd.to_numeric,
                                                                                                     errors='coerce')
     idx = intersect_df['num intersecting categories'].argmax()
@@ -121,6 +125,8 @@ def run_inter_metrics():
     for key, val in intersect_group_dict_scopus_to_wos.items():
         record = {'categories': key, 'num intersecting categories': int(len(val))}
         intersect_df = intersect_df.append(record, ignore_index=True)
+        if len(val.loc[val['ratio']>0.95]):
+            print('cat {} ration larger than 0.95'.format(key))
     intersect_df['num intersecting categories'] = intersect_df['num intersecting categories'].apply(pd.to_numeric,
                                                                                                     errors='coerce')
     idx = intersect_df['num intersecting categories'].argmax()
@@ -147,11 +153,11 @@ if __name__ == '__main__':
     extractMetricsIntra.utils=utils
     extractMetricsIntra.vis=vis
     extractMetricsIntra.cover_set=cover_set
-    # run_intra_metrics()
+    run_intra_metrics()
     extractMetricsInter=ExtractMetricsInter()
     extractMetricsInter.utils = utils
     extractMetricsInter.vis = vis
     extractMetricsInter.cover_set = cover_set
-    run_inter_metrics()
+    # run_inter_metrics()
 
 
